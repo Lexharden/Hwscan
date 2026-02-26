@@ -1,0 +1,47 @@
+# ── Compiled binaries ──
+bin/
+dist/
+*.exe
+
+# ── Build workflow artifacts (keep scripts, ignore generated dirs) ──
+build/alpine/base/
+build/alpine/work/
+build/alpine/output/
+
+# ── ISO images ──
+*.iso
+
+# ── Go artifacts ──
+*.o
+*.a
+*.so
+*.dylib
+*.test
+*.out
+coverage.txt
+
+# ── Dependency directories ──
+vendor/
+
+# ── Go workspace ──
+go.work
+go.work.sum
+
+# ── IDE / Editor ──
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.directory
+
+# ── Temporary / Logs ──
+tmp/
+temp/
+*.tmp
+*.log
+
+# ── Fyne cache (legacy) ──
+.fyne/
