@@ -1,6 +1,6 @@
 # HWSCAN
 
-**Herramienta de auditoría de hardware — booteable, sin dependencias.**
+**Herramienta de auditoría de hardware — booteable**
 
 Desarrollado por Yafel Garcia · Go 1.21 · Solo stdlib · v1.0.0
 
