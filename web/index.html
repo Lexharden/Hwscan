@@ -496,6 +496,17 @@
                 </div>
             </div>
 
+            <div id="disk-section" style="display:none">
+                <p class="section-title">Storage</p>
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Disks</span>
+                        <span class="card-badge" id="disk-count-badge">—</span>
+                    </div>
+                    <div class="card-body" id="disk-list" style="padding-top:4px; padding-bottom:4px;"></div>
+                </div>
+            </div>
+
             <div class="actions">
                 <button class="btn btn-primary" onclick="downloadJSON()">Export JSON</button>
                 <button class="btn btn-ghost"    onclick="refreshData()">Refresh</button>
@@ -556,17 +567,25 @@
             document.getElementById('mem-total-badge').textContent = `${d.memory.total_gb.toFixed(1)} GB`;
             const grid = document.getElementById('mem-modules');
             if (d.memory.modules && d.memory.modules.length) {
-                grid.innerHTML = d.memory.modules.map((m, i) => `
+                // Un módulo sin tipo ni velocidad = entrada sintética (dmidecode no disponible)
+                const isSynthetic = d.memory.modules.length === 1
+                    && !d.memory.modules[0].type
+                    && !d.memory.modules[0].speed
+                    && !d.memory.modules[0].locator;
+                grid.innerHTML = d.memory.modules.map((m, i) => {
+                    const label = isSynthetic ? 'Total' : `Slot ${i + 1}`;
+                    const detail = [m.type, m.speed].filter(Boolean).join(' \u00b7 ')
+                        + (m.manufacturer && m.manufacturer !== 'Unknown' ? '<br>' + m.manufacturer : '')
+                        + (m.part_number ? '<br>' + m.part_number : '')
+                        + (m.locator     ? '<br>' + m.locator     : '')
+                        + (isSynthetic   ? '<br><span style="color:var(--muted);font-size:10px">dmidecode not available — install it for slot detail</span>' : '');
+                    return `
                     <div class="module">
-                        <div class="module-index">Slot ${i + 1}</div>
+                        <div class="module-index">${label}</div>
                         <div class="module-size">${m.size}</div>
-                        <div class="module-detail">
-                            ${[m.type, m.speed].filter(Boolean).join(' &middot; ')}
-                            ${m.manufacturer && m.manufacturer !== 'Unknown' ? '<br>' + m.manufacturer : ''}
-                            ${m.part_number ? '<br>' + m.part_number : ''}
-                            ${m.locator ? '<br>' + m.locator : ''}
-                        </div>
-                    </div>`).join('');
+                        <div class="module-detail">${detail || '&nbsp;'}</div>
+                    </div>`;
+                }).join('');
             } else {
                 grid.innerHTML = `<div class="row"><span class="row-value" style="color:var(--muted)">No module data available</span></div>`;
             }
@@ -593,6 +612,23 @@
                         <div class="gpu-meta">
                             <span>PCI ${g.pci_address}</span>
                             ${g.memory_size ? `<span>VRAM ${g.memory_size}</span>` : ''}
+                        </div>
+                    </div>`).join('');
+            }
+
+            // Disks
+            if (d.disks && d.disks.length) {
+                document.getElementById('disk-section').style.display = '';
+                document.getElementById('disk-count-badge').textContent =
+                    d.disks.length === 1 ? '1 disk' : `${d.disks.length} disks`;
+                document.getElementById('disk-list').innerHTML = d.disks.map(disk => `
+                    <div class="gpu-entry">
+                        <div class="gpu-name">${disk.model || disk.name}</div>
+                        <div class="gpu-meta">
+                            <span>/dev/${disk.name}</span>
+                            <span>${disk.size_gb.toFixed(1)} GB</span>
+                            ${disk.type   ? `<span>${disk.type}</span>`   : ''}
+                            ${disk.vendor ? `<span>${disk.vendor}</span>` : ''}
                         </div>
                     </div>`).join('');
             }

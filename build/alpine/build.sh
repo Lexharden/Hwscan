@@ -101,14 +101,14 @@ EOFAPK
 # 4.4 Script de auto-instalación de herramientas de hardware al hacer login
 cat > "$OVERLAY_DIR/etc/profile.d/install-hw-tools.sh" << 'EOFSH'
 #!/bin/sh
-if ! command -v lspci >/dev/null 2>&1; then
-    echo -e "\e[36m[*] Instalando herramientas de hardware (lspci/lsusb)...\e[0m"
+if ! command -v lspci >/dev/null 2>&1 || ! command -v dmidecode >/dev/null 2>&1; then
+    echo -e "\e[36m[*] Instalando herramientas de hardware (lspci/lsusb/dmidecode)...\e[0m"
     apk update -q >/dev/null 2>&1
-    apk add -q pciutils pciutils-libs hwdata-pci usbutils hwdata-usb >/dev/null 2>&1
+    apk add -q pciutils pciutils-libs hwdata-pci usbutils hwdata-usb dmidecode >/dev/null 2>&1
     if command -v lspci >/dev/null 2>&1; then
         echo -e "\e[32m[✓] Herramientas instaladas correctamente.\e[0m"
     else
-        echo -e "\e[31m[!] Error: No se pudo instalar lspci.\e[0m"
+        echo -e "\e[31m[!] Error: No se pudo instalar las herramientas.\e[0m"
     fi
 fi
 EOFSH

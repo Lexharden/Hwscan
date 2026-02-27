@@ -45,6 +45,12 @@ func Detect() (*HardwareInfo, error) {
 		fmt.Printf("Advertencia: error detectando GPU: %v\n", err)
 	}
 
+	// Detectar Discos
+	info.Disks, err = detectDisks()
+	if err != nil {
+		fmt.Printf("Advertencia: error detectando discos: %v\n", err)
+	}
+
 	// Generar Machine ID (debe ser al final para tener toda la info disponible)
 	info.MachineID = GenerateMachineID(info)
 
@@ -174,9 +180,37 @@ func detectMemory() (MemoryInfo, error) {
 	modules := detectMemoryModules()
 	if len(modules) > 0 {
 		mem.Modules = modules
+	} else {
+		// Fallback: sintetizar entrada cuando dmidecode no está disponible
+		mem.Modules = fallbackMemoryModules(mem.TotalGB)
 	}
 
 	return mem, nil
+}
+
+// fallbackMemoryModules crea una entrada sintética con la RAM total cuando
+// dmidecode no está disponible o no devuelve información de módulos.
+func fallbackMemoryModules(totalGB float64) []MemoryModule {
+	if totalGB <= 0 {
+		return nil
+	}
+
+	// Intentar obtener tipo de RAM desde /sys/firmware/dmi/tables (sin parsear)
+	// y velocidad desde kernel para dar más información
+	module := MemoryModule{
+		Size: fmt.Sprintf("%.1f GB", totalGB),
+	}
+
+	// Intentar leer tipo de RAM desde dmidecode con timeout corto
+	out, err := exec.Command("dmidecode", "-s", "memory-type").Output()
+	if err == nil {
+		t := strings.TrimSpace(string(out))
+		if t != "" {
+			module.Type = t
+		}
+	}
+
+	return []MemoryModule{module}
 }
 
 // detectMemoryModules usa dmidecode para obtener información de módulos RAM
@@ -207,18 +241,18 @@ func detectMemoryModules() []MemoryModule {
 			continue
 		}
 
-		if strings.HasPrefix(line, "Size:") {
-			currentModule.Size = strings.TrimSpace(strings.TrimPrefix(line, "Size:"))
-		} else if strings.HasPrefix(line, "Type:") {
-			currentModule.Type = strings.TrimSpace(strings.TrimPrefix(line, "Type:"))
-		} else if strings.HasPrefix(line, "Speed:") {
-			currentModule.Speed = strings.TrimSpace(strings.TrimPrefix(line, "Speed:"))
-		} else if strings.HasPrefix(line, "Locator:") {
-			currentModule.Locator = strings.TrimSpace(strings.TrimPrefix(line, "Locator:"))
-		} else if strings.HasPrefix(line, "Manufacturer:") {
-			currentModule.Manufacturer = strings.TrimSpace(strings.TrimPrefix(line, "Manufacturer:"))
-		} else if strings.HasPrefix(line, "Part Number:") {
-			currentModule.PartNumber = strings.TrimSpace(strings.TrimPrefix(line, "Part Number:"))
+		if after, ok := strings.CutPrefix(line, "Size:"); ok {
+			currentModule.Size = strings.TrimSpace(after)
+		} else if after0, ok0 := strings.CutPrefix(line, "Type:"); ok0 {
+			currentModule.Type = strings.TrimSpace(after0)
+		} else if after1, ok1 := strings.CutPrefix(line, "Speed:"); ok1 {
+			currentModule.Speed = strings.TrimSpace(after1)
+		} else if after2, ok2 := strings.CutPrefix(line, "Locator:"); ok2 {
+			currentModule.Locator = strings.TrimSpace(after2)
+		} else if after3, ok3 := strings.CutPrefix(line, "Manufacturer:"); ok3 {
+			currentModule.Manufacturer = strings.TrimSpace(after3)
+		} else if after4, ok4 := strings.CutPrefix(line, "Part Number:"); ok4 {
+			currentModule.PartNumber = strings.TrimSpace(after4)
 		}
 	}
 
@@ -228,6 +262,75 @@ func detectMemoryModules() []MemoryModule {
 	}
 
 	return modules
+}
+
+// detectDisks lee información de discos desde /sys/block
+func detectDisks() ([]DiskInfo, error) {
+	disks := make([]DiskInfo, 0)
+
+	entries, err := os.ReadDir("/sys/block")
+	if err != nil {
+		return disks, err
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		// Ignorar dispositivos virtuales
+		if strings.HasPrefix(name, "loop") ||
+			strings.HasPrefix(name, "ram") ||
+			strings.HasPrefix(name, "dm-") ||
+			strings.HasPrefix(name, "zram") ||
+			strings.HasPrefix(name, "sr") {
+			continue
+		}
+
+		disk := DiskInfo{Name: name}
+		basePath := "/sys/block/" + name
+
+		// Tamaño del dispositivo (sectores de 512 bytes)
+		if data, err := os.ReadFile(basePath + "/size"); err == nil {
+			if sectors, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64); err == nil {
+				disk.SizeBytes = sectors * 512
+				disk.SizeGB = float64(disk.SizeBytes) / (1024 * 1024 * 1024)
+			}
+		}
+
+		// Ignorar dispositivos muy pequeños (< 1 MB)
+		if disk.SizeBytes < 1024*1024 {
+			continue
+		}
+
+		// Modelo del disco
+		for _, modelPath := range []string{
+			basePath + "/device/model",
+			basePath + "/device/name",
+		} {
+			if data, err := os.ReadFile(modelPath); err == nil {
+				disk.Model = strings.TrimSpace(string(data))
+				break
+			}
+		}
+
+		// Fabricante
+		if data, err := os.ReadFile(basePath + "/device/vendor"); err == nil {
+			disk.Vendor = strings.TrimSpace(string(data))
+		}
+
+		// Tipo: NVMe, SSD o HDD
+		if strings.HasPrefix(name, "nvme") {
+			disk.Type = "NVMe SSD"
+		} else if data, err := os.ReadFile(basePath + "/queue/rotational"); err == nil {
+			if strings.TrimSpace(string(data)) == "0" {
+				disk.Type = "SSD"
+			} else {
+				disk.Type = "HDD"
+			}
+		}
+
+		disks = append(disks, disk)
+	}
+
+	return disks, nil
 }
 
 // detectMotherboard lee información de la placa madre desde /sys/class/dmi/id

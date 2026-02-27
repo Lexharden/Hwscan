@@ -10,86 +10,137 @@ import (
 // FormatConsole formatea la información de hardware para mostrar en consola
 func FormatConsole(info *HardwareInfo) string {
 	var sb strings.Builder
+	sb.Grow(4096) // Prealocación aproximada para evitar realocaciones
 
-	sb.WriteString("╔══════════════════════════════════════════════════════════════╗\n")
-	sb.WriteString("║                    HWSCAN v1.0                               ║\n")
-	sb.WriteString("║              Hardware Detection Tool                         ║\n")
-	sb.WriteString("║              Desarrollado por: Yafel Garcia                  ║\n")
-	sb.WriteString("╚══════════════════════════════════════════════════════════════╝\n\n")
+	// Header
+	fmt.Fprintln(&sb, "╔══════════════════════════════════════════════════════════════╗")
+	fmt.Fprintln(&sb, "║                    HWSCAN v1.0                               ║")
+	fmt.Fprintln(&sb, "║              Hardware Detection Tool                         ║")
+	fmt.Fprintln(&sb, "║              Desarrollado por: Yafel Garcia                  ║")
+	fmt.Fprintln(&sb, "╚══════════════════════════════════════════════════════════════╝")
+	fmt.Fprintln(&sb)
 
 	// Machine ID
-	sb.WriteString("┌─ IDENTIFICACIÓN ─────────────────────────────────────────────┐\n")
-	sb.WriteString(fmt.Sprintf("│ Machine ID: %s\n", info.MachineID))
-	sb.WriteString("└──────────────────────────────────────────────────────────────┘\n\n")
+	fmt.Fprintln(&sb, "┌─ IDENTIFICACIÓN ─────────────────────────────────────────────┐")
+	fmt.Fprintf(&sb, "│ Machine ID: %s\n", info.MachineID)
+	fmt.Fprintln(&sb, "└──────────────────────────────────────────────────────────────┘")
+	fmt.Fprintln(&sb)
 
 	// CPU
-	sb.WriteString("┌─ CPU ────────────────────────────────────────────────────────┐\n")
-	sb.WriteString(fmt.Sprintf("│ Modelo:    %s\n", info.CPU.Model))
-	sb.WriteString(fmt.Sprintf("│ Vendor:    %s\n", info.CPU.Vendor))
-	sb.WriteString(fmt.Sprintf("│ Cores:     %d físicos / %d hilos\n", info.CPU.Cores, info.CPU.Threads))
-	sb.WriteString(fmt.Sprintf("│ Velocidad: %.2f GHz\n", info.CPU.Speed/1000))
+	fmt.Fprintln(&sb, "┌─ CPU ────────────────────────────────────────────────────────┐")
+	fmt.Fprintf(&sb, "│ Modelo:    %s\n", info.CPU.Model)
+	fmt.Fprintf(&sb, "│ Vendor:    %s\n", info.CPU.Vendor)
+	fmt.Fprintf(&sb, "│ Cores:     %d físicos / %d hilos\n", info.CPU.Cores, info.CPU.Threads)
+	fmt.Fprintf(&sb, "│ Velocidad: %.2f GHz\n", info.CPU.Speed/1000)
 	if info.CPU.CacheSize != "" {
-		sb.WriteString(fmt.Sprintf("│ Caché:     %s\n", info.CPU.CacheSize))
+		fmt.Fprintf(&sb, "│ Caché:     %s\n", info.CPU.CacheSize)
 	}
-	sb.WriteString("└──────────────────────────────────────────────────────────────┘\n\n")
+	fmt.Fprintln(&sb, "└──────────────────────────────────────────────────────────────┘")
+	fmt.Fprintln(&sb)
 
 	// Memoria
-	sb.WriteString("┌─ MEMORIA RAM ────────────────────────────────────────────────┐\n")
-	sb.WriteString(fmt.Sprintf("│ Total:     %.2f GB (%.0f bytes)\n", info.Memory.TotalGB, float64(info.Memory.TotalBytes)))
+	fmt.Fprintln(&sb, "┌─ MEMORIA RAM ────────────────────────────────────────────────┐")
+	fmt.Fprintf(&sb, "│ Total:     %.2f GB (%.0f bytes)\n",
+		info.Memory.TotalGB,
+		float64(info.Memory.TotalBytes),
+	)
+
 	if len(info.Memory.Modules) > 0 {
-		sb.WriteString("│\n│ Módulos instalados:\n")
+		fmt.Fprintln(&sb, "│")
+		fmt.Fprintln(&sb, "│ Módulos instalados:")
 		for i, mod := range info.Memory.Modules {
-			sb.WriteString(fmt.Sprintf("│  [%d] %s %s %s", i+1, mod.Size, mod.Type, mod.Speed))
+			fmt.Fprintf(&sb, "│  [%d] %s %s %s", i+1, mod.Size, mod.Type, mod.Speed)
+
 			if mod.Locator != "" {
-				sb.WriteString(fmt.Sprintf(" (%s)", mod.Locator))
+				fmt.Fprintf(&sb, " (%s)", mod.Locator)
 			}
-			sb.WriteString("\n")
+			fmt.Fprintln(&sb)
+
 			if mod.Manufacturer != "" && mod.Manufacturer != "Unknown" {
-				sb.WriteString(fmt.Sprintf("│      Fabricante: %s", mod.Manufacturer))
+				fmt.Fprintf(&sb, "│      Fabricante: %s", mod.Manufacturer)
 				if mod.PartNumber != "" {
-					sb.WriteString(fmt.Sprintf(" | P/N: %s", mod.PartNumber))
+					fmt.Fprintf(&sb, " | P/N: %s", mod.PartNumber)
 				}
-				sb.WriteString("\n")
+				fmt.Fprintln(&sb)
 			}
 		}
 	}
-	sb.WriteString("└──────────────────────────────────────────────────────────────┘\n\n")
+	fmt.Fprintln(&sb, "└──────────────────────────────────────────────────────────────┘")
+	fmt.Fprintln(&sb)
 
 	// Placa Madre
-	sb.WriteString("┌─ PLACA MADRE ────────────────────────────────────────────────┐\n")
-	sb.WriteString(fmt.Sprintf("│ Fabricante: %s\n", info.Motherboard.Manufacturer))
-	sb.WriteString(fmt.Sprintf("│ Modelo:     %s\n", info.Motherboard.Product))
+	fmt.Fprintln(&sb, "┌─ PLACA MADRE ────────────────────────────────────────────────┐")
+	fmt.Fprintf(&sb, "│ Fabricante: %s\n", info.Motherboard.Manufacturer)
+	fmt.Fprintf(&sb, "│ Modelo:     %s\n", info.Motherboard.Product)
+
 	if info.Motherboard.Version != "" {
-		sb.WriteString(fmt.Sprintf("│ Versión:    %s\n", info.Motherboard.Version))
+		fmt.Fprintf(&sb, "│ Versión:    %s\n", info.Motherboard.Version)
 	}
 	if info.Motherboard.BIOSVendor != "" {
-		sb.WriteString(fmt.Sprintf("│ BIOS:       %s v%s (%s)\n",
+		fmt.Fprintf(&sb, "│ BIOS:       %s v%s (%s)\n",
 			info.Motherboard.BIOSVendor,
 			info.Motherboard.BIOSVersion,
-			info.Motherboard.BIOSDate))
+			info.Motherboard.BIOSDate,
+		)
 	}
-	sb.WriteString("└──────────────────────────────────────────────────────────────┘\n\n")
+
+	fmt.Fprintln(&sb, "└──────────────────────────────────────────────────────────────┘")
+	fmt.Fprintln(&sb)
 
 	// GPU
 	if len(info.GPU) > 0 {
-		sb.WriteString("┌─ GPU ────────────────────────────────────────────────────────┐\n")
+		fmt.Fprintln(&sb, "┌─ GPU ────────────────────────────────────────────────────────┐")
 		for i, gpu := range info.GPU {
-			sb.WriteString(fmt.Sprintf("│ [%d] %s %s\n", i+1, gpu.Vendor, gpu.Model))
-			sb.WriteString(fmt.Sprintf("│     PCI: %s\n", gpu.PCIAddress))
+			fmt.Fprintf(&sb, "│ [%d] %s %s\n", i+1, gpu.Vendor, gpu.Model)
+			fmt.Fprintf(&sb, "│     PCI: %s\n", gpu.PCIAddress)
+
 			if gpu.MemorySize != "" {
-				sb.WriteString(fmt.Sprintf("│     VRAM: %s\n", gpu.MemorySize))
+				fmt.Fprintf(&sb, "│     VRAM: %s\n", gpu.MemorySize)
 			}
+
 			if i < len(info.GPU)-1 {
-				sb.WriteString("│\n")
+				fmt.Fprintln(&sb, "│")
 			}
 		}
-		sb.WriteString("└──────────────────────────────────────────────────────────────┘\n\n")
+		fmt.Fprintln(&sb, "└──────────────────────────────────────────────────────────────┘")
+		fmt.Fprintln(&sb)
 	}
 
-	sb.WriteString("═══════════════════════════════════════════════════════════════\n")
-	sb.WriteString(fmt.Sprintf(" Interfaz Web: http://%s:8080\n", utils.GetLocalIP()))
-	sb.WriteString(fmt.Sprintf(" Fecha/Hora:   %s\n", info.Timestamp))
-	sb.WriteString("═══════════════════════════════════════════════════════════════\n")
+	// Discos
+	if len(info.Disks) > 0 {
+		fmt.Fprintln(&sb, "┌─ ALMACENAMIENTO ────────────────────────────────────────────────┐")
+		for i, disk := range info.Disks {
+			model := disk.Model
+			if model == "" {
+				model = disk.Name
+			}
+
+			fmt.Fprintf(&sb, "│ [%d] %s", i+1, model)
+			if disk.Vendor != "" {
+				fmt.Fprintf(&sb, " (%s)", disk.Vendor)
+			}
+			fmt.Fprintln(&sb)
+
+			fmt.Fprintf(&sb,
+				"│     Capacidad: %.1f GB | Tipo: %s | Dev: /dev/%s\n",
+				disk.SizeGB,
+				disk.Type,
+				disk.Name,
+			)
+
+			if i < len(info.Disks)-1 {
+				fmt.Fprintln(&sb, "│")
+			}
+		}
+		fmt.Fprintln(&sb, "└──────────────────────────────────────────────────────────────")
+		fmt.Fprintln(&sb)
+	}
+
+	// Footer
+	fmt.Fprintln(&sb, "═══════════════════════════════════════════════════════════════")
+	fmt.Fprintf(&sb, " Interfaz Web: http://%s:8080\n", utils.GetLocalIP())
+	fmt.Fprintf(&sb, " Fecha/Hora:   %s\n", info.Timestamp)
+	fmt.Fprintln(&sb, "═══════════════════════════════════════════════════════════════")
 
 	return sb.String()
 }

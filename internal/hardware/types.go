@@ -7,6 +7,7 @@ type HardwareInfo struct {
 	Memory      MemoryInfo      `json:"memory"`
 	Motherboard MotherboardInfo `json:"motherboard"`
 	GPU         []GPUInfo       `json:"gpu"`
+	Disks       []DiskInfo      `json:"disks"`
 	Timestamp   string          `json:"timestamp"`
 }
 
@@ -56,4 +57,14 @@ type GPUInfo struct {
 	PCIAddress string `json:"pci_address"` // Dirección PCI
 	Driver     string `json:"driver"`      // Driver en uso (si está disponible)
 	MemorySize string `json:"memory_size"` // Tamaño de VRAM (si se puede detectar)
+}
+
+// DiskInfo contiene información de un disco de almacenamiento
+type DiskInfo struct {
+	Name      string  `json:"name"`       // Nombre del dispositivo (sda, nvme0n1)
+	Model     string  `json:"model"`      // Modelo del disco
+	Vendor    string  `json:"vendor"`     // Fabricante
+	SizeGB    float64 `json:"size_gb"`    // Tamaño en GB
+	SizeBytes uint64  `json:"size_bytes"` // Tamaño en bytes
+	Type      string  `json:"type"`       // HDD, SSD, NVMe SSD
 }
