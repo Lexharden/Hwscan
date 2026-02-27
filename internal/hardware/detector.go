@@ -450,8 +450,9 @@ func getVRAM(pciAddress string) string {
 	// Estrategia 2: nvidia-smi (devuelve MiB, ej: "4096 MiB" o solo "4096")
 	if out, err := exec.Command("nvidia-smi",
 		"--query-gpu=memory.total",
+
 		"--format=csv,noheader,nounits",
-		"--id="+pciAddress).Output(); err == nil {
+		"--id="+fullAddr).Output(); err == nil {
 		val := strings.TrimSpace(string(out))
 		// nounits → valor en MiB como número entero
 		if mib, err := strconv.ParseUint(val, 10, 64); err == nil && mib > 0 {
@@ -476,8 +477,9 @@ func getVRAM(pciAddress string) string {
 	}
 
 	// Estrategia 4: lspci -v — BAR prefetchable mayor.
-	// NOTA: NVIDIA expone solo una apertura de 256 MB como BAR prefetchable con el driver
-	// propietario. Filtramos resultados < 512 MB para no reportar la apertura como VRAM.
+	// Con driver propietario NVIDIA el BAR es 256 MB (apertura), pero
+	// si ninguna estrategia anterior tuvo éxito es mejor mostrar eso
+	// que no mostrar nada.
 	out, err := exec.Command("lspci", "-v", "-s", pciAddress).Output()
 	if err != nil {
 		return ""
@@ -501,8 +503,7 @@ func getVRAM(pciAddress string) string {
 			maxBytes = b
 		}
 	}
-	// Solo reportar si el BAR es >= 512 MB para evitar falsos positivos (apertura NVIDIA)
-	if maxBytes >= 512*1024*1024 {
+	if maxBytes > 0 {
 		return formatVRAMBytes(maxBytes)
 	}
 	return ""

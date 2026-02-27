@@ -419,7 +419,7 @@
         </div>
         <div class="header-right">
             <div class="status-dot" id="status-dot"></div>
-            <span class="header-label" id="status-label">Connecting</span>
+            <span class="header-label" id="status-label">Conectando</span>
         </div>
     </header>
 
@@ -427,12 +427,17 @@
 
         <div id="loading" class="loading">
             <div class="loader"></div>
-            <p>Reading hardware data</p>
+            <p>Leyendo datos del hardware...</p>
         </div>
 
         <div id="content" style="display:none">
 
-            <p class="section-title">Processor</p>
+            <div id="machine-id-bar" style="display:none;margin-bottom:20px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;gap:12px;">
+                <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">ID de Maquina</span>
+                <span id="machine-id-value" style="font-size:12px;color:var(--accent);font-family:monospace;letter-spacing:0.5px;"></span>
+            </div>
+
+            <p class="section-title">Procesador</p>
             <div class="card">
                 <div class="card-head">
                     <span class="card-title" id="cpu-model">—</span>
@@ -441,26 +446,26 @@
                 <div class="card-body">
                     <div class="stat-bar">
                         <div class="stat-item">
-                            <div class="stat-label">Clock Speed</div>
+                            <div class="stat-label">Velocidad</div>
                             <div class="stat-value" id="cpu-speed">—<span class="stat-unit">GHz</span></div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">Physical Cores</div>
+                            <div class="stat-label">Nucleos Fisicos</div>
                             <div class="stat-value" id="cpu-cores">—</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">Threads</div>
+                            <div class="stat-label">Hilos</div>
                             <div class="stat-value" id="cpu-threads">—</div>
                         </div>
                         <div class="stat-item" id="cache-block" style="display:none">
-                            <div class="stat-label">Cache</div>
+                            <div class="stat-label">Cache L3</div>
                             <div class="stat-value" id="cpu-cache">—</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <p class="section-title">Memory</p>
+            <p class="section-title">Memoria</p>
             <div class="card">
                 <div class="card-head">
                     <span class="card-title">RAM</span>
@@ -471,7 +476,7 @@
                 </div>
             </div>
 
-            <p class="section-title">Motherboard</p>
+            <p class="section-title">Placa Base</p>
             <div class="card">
                 <div class="card-head">
                     <span class="card-title" id="mb-product">—</span>
@@ -490,17 +495,17 @@
             </div>
 
             <div id="gpu-section" style="display:none">
-                <p class="section-title">Graphics</p>
+                <p class="section-title">Tarjeta Grafica</p>
                 <div class="card">
                     <div class="card-body" id="gpu-list" style="padding-top:4px; padding-bottom:4px;"></div>
                 </div>
             </div>
 
             <div id="disk-section" style="display:none">
-                <p class="section-title">Storage</p>
+                <p class="section-title">Almacenamiento</p>
                 <div class="card">
                     <div class="card-head">
-                        <span class="card-title">Disks</span>
+                        <span class="card-title">Discos</span>
                         <span class="card-badge" id="disk-count-badge">—</span>
                     </div>
                     <div class="card-body" id="disk-list" style="padding-top:4px; padding-bottom:4px;"></div>
@@ -508,15 +513,15 @@
             </div>
 
             <div class="actions">
-                <button class="btn btn-primary" onclick="downloadJSON()">Export JSON</button>
-                <button class="btn btn-ghost"    onclick="refreshData()">Refresh</button>
+                <button class="btn btn-primary" onclick="downloadJSON()">Exportar JSON</button>
+                <button class="btn btn-ghost"    onclick="refreshData()">Actualizar</button>
             </div>
 
         </div>
 
         <div id="error" style="display:none">
             <div class="error-box">
-                <h3>Connection failed</h3>
+                <h3>Error de conexion</h3>
                 <p id="error-message"></p>
             </div>
         </div>
@@ -541,12 +546,12 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'block';
                 document.getElementById('status-dot').classList.add('live');
-                document.getElementById('status-label').textContent = 'Live';
+                document.getElementById('status-label').textContent = 'En vivo';
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display   = 'block';
                 document.getElementById('error-message').textContent = err.message;
-                document.getElementById('status-label').textContent  = 'Offline';
+                document.getElementById('status-label').textContent  = 'Sin conexion';
             }
         }
 
@@ -573,12 +578,12 @@
                     && !d.memory.modules[0].speed
                     && !d.memory.modules[0].locator;
                 grid.innerHTML = d.memory.modules.map((m, i) => {
-                    const label = isSynthetic ? 'Total' : `Slot ${i + 1}`;
+                    const label = isSynthetic ? 'Total' : `Ranura ${i + 1}`;
                     const detail = [m.type, m.speed].filter(Boolean).join(' \u00b7 ')
                         + (m.manufacturer && m.manufacturer !== 'Unknown' ? '<br>' + m.manufacturer : '')
                         + (m.part_number ? '<br>' + m.part_number : '')
                         + (m.locator     ? '<br>' + m.locator     : '')
-                        + (isSynthetic   ? '<br><span style="color:var(--muted);font-size:10px">dmidecode not available — install it for slot detail</span>' : '');
+                        + (isSynthetic   ? '<br><span style="color:var(--muted);font-size:10px">dmidecode no disponible - instalalo para ver detalle de ranuras</span>' : '');
                     return `
                     <div class="module">
                         <div class="module-index">${label}</div>
@@ -587,7 +592,7 @@
                     </div>`;
                 }).join('');
             } else {
-                grid.innerHTML = `<div class="row"><span class="row-value" style="color:var(--muted)">No module data available</span></div>`;
+                grid.innerHTML = `<div class="row"><span class="row-value" style="color:var(--muted)">Sin datos de modulos disponibles</span></div>`;
             }
 
             // Motherboard
@@ -620,7 +625,7 @@
             if (d.disks && d.disks.length) {
                 document.getElementById('disk-section').style.display = '';
                 document.getElementById('disk-count-badge').textContent =
-                    d.disks.length === 1 ? '1 disk' : `${d.disks.length} disks`;
+                    d.disks.length === 1 ? '1 disco' : `${d.disks.length} discos`;
                 document.getElementById('disk-list').innerHTML = d.disks.map(disk => `
                     <div class="gpu-entry">
                         <div class="gpu-name">${disk.model || disk.name}</div>
@@ -633,7 +638,14 @@
                     </div>`).join('');
             }
 
-            // Footer timestamp + versión dinámica (viene en la misma respuesta)
+            // Machine ID
+            if (d.machine_id) {
+                const bar = document.getElementById('machine-id-bar');
+                bar.style.display = 'flex';
+                document.getElementById('machine-id-value').textContent = d.machine_id;
+            }
+
+            // Footer timestamp + version dinamica (viene en la misma respuesta)
             document.getElementById('footer-ts').textContent =
                 new Date(d.timestamp).toLocaleString('es-ES');
             if (d.app_version) {
@@ -660,7 +672,7 @@
             document.getElementById('error').style.display   = 'none';
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('status-dot').classList.remove('live');
-            document.getElementById('status-label').textContent = 'Connecting';
+                document.getElementById('status-label').textContent = 'Conectando';
             loadHardwareInfo();
         }
     </script>
