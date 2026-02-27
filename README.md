@@ -10,7 +10,7 @@ Desarrollado por Yafel Garcia · Go 1.21 · Solo stdlib · v1.0.0
 
 HWSCAN detecta y reporta el hardware de cualquier máquina con solo arrancar desde una ISO de Alpine Linux. Presenta la información en consola, la sirve mediante una interfaz web minimalista y la exporta automáticamente a un JSON en USB.
 
-No requiere drivers, agentes ni conexión a internet.
+Requiere internet para instalar dependencias de GPU.
 
 ## Características
 
