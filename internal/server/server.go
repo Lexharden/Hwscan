@@ -10,6 +10,7 @@ import (
 
 	"github.com/Lexharden/hwscan/internal/hardware"
 	"github.com/Lexharden/hwscan/internal/utils"
+	"github.com/Lexharden/hwscan/internal/version"
 )
 
 // Server representa el servidor HTTP embebido
@@ -72,20 +73,28 @@ func (s *Server) Start() error {
 	return nil
 }
 
+// hardwareResponse envuelve HardwareInfo e inyecta la versión de la app
+// para que el cliente web no necesite una segunda petición.
+type hardwareResponse struct {
+	*hardware.HardwareInfo
+	AppVersion string `json:"app_version"`
+}
+
 // handleHardwareAPI maneja las peticiones al endpoint /api/hardware
 func (s *Server) handleHardwareAPI(w http.ResponseWriter, r *http.Request) {
-	// Solo permitir GET
 	if r.Method != http.MethodGet {
 		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Configurar headers CORS (por si se accede desde otro origen)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
-	// Serializar y enviar la información de hardware
-	if err := json.NewEncoder(w).Encode(s.hardwareInfo); err != nil {
+	resp := &hardwareResponse{
+		HardwareInfo: s.hardwareInfo,
+		AppVersion:   version.Current,
+	}
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "Error al serializar datos", http.StatusInternalServerError)
 		log.Printf("Error al serializar hardware info: %v\n", err)
 		return
@@ -101,7 +110,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status":    "ok",
 		"timestamp": time.Now().Format(time.RFC3339),
 		"service":   "hwscan",
-		"version":   "1.0",
+		"version":   version.Current,
 	}
 
 	json.NewEncoder(w).Encode(response)

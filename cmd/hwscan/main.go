@@ -16,10 +16,7 @@ import (
 	"github.com/Lexharden/hwscan/internal/export"
 	"github.com/Lexharden/hwscan/internal/hardware"
 	"github.com/Lexharden/hwscan/internal/server"
-)
-
-const (
-	version = "1.0.0"
+	"github.com/Lexharden/hwscan/internal/version"
 )
 
 func main() {
@@ -35,7 +32,7 @@ func main() {
 
 	// Mostrar versión
 	if *versionFlag {
-		fmt.Printf("HWSCAN v%s\n", version)
+		fmt.Printf("HWSCAN v%s\n", version.Current)
 		os.Exit(0)
 	}
 
@@ -46,7 +43,7 @@ func main() {
 	}
 
 	// Paso 1: Detectar hardware
-	fmt.Println("🔍 Detectando hardware del sistema...")
+	fmt.Println("Detectando hardware del sistema...")
 	fmt.Println()
 
 	hwInfo, err := hardware.Detect()

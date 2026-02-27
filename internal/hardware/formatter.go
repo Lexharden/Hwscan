@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Lexharden/hwscan/internal/utils"
+	"github.com/Lexharden/hwscan/internal/version"
 )
 
 // FormatConsole formatea la información de hardware para mostrar en consola
@@ -14,7 +15,11 @@ func FormatConsole(info *HardwareInfo) string {
 
 	// Header
 	fmt.Fprintln(&sb, "╔══════════════════════════════════════════════════════════════╗")
-	fmt.Fprintln(&sb, "║                      HWSCAN v1.0                             ║")
+	// Línea de versión centrada dinámicamente dentro del recuadro de 62 chars
+	vtext := fmt.Sprintf("HWSCAN v%s", version.Current)
+	leftPad := (62 - len(vtext)) / 2
+	rightPad := 62 - leftPad - len(vtext)
+	fmt.Fprintf(&sb, "║%s%s%s║\n", strings.Repeat(" ", leftPad), vtext, strings.Repeat(" ", rightPad))
 	fmt.Fprintln(&sb, "║                 Hardware Detection Tool                      ║")
 	fmt.Fprintln(&sb, "║           Desarrollado por: Yafel Garcia (Lexharden)         ║")
 	fmt.Fprintln(&sb, "╚══════════════════════════════════════════════════════════════╝")
@@ -138,8 +143,8 @@ func FormatConsole(info *HardwareInfo) string {
 
 	// Footer
 	fmt.Fprintln(&sb, "═══════════════════════════════════════════════════════════════")
-	fmt.Fprintf(&sb, " Interfaz Web: http://%s:8080\n", utils.GetLocalIP())
-	fmt.Fprintf(&sb, " Fecha/Hora:   %s\n", info.Timestamp)
+	fmt.Fprintf(&sb, "Interfaz Web: http://%s:8080\n", utils.GetLocalIP())
+	fmt.Fprintf(&sb, "Fecha/Hora:   %s\n", info.Timestamp)
 	fmt.Fprintln(&sb, "═══════════════════════════════════════════════════════════════")
 
 	return sb.String()

@@ -524,7 +524,7 @@
     </main>
 
     <footer class="footer">
-        <span id="footer-ts"></span>&nbsp;&nbsp;&mdash;&nbsp;&nbsp;HWSCAN v1.0&nbsp;&nbsp;&mdash;&nbsp;&nbsp;Yafel Garcia
+        <span id="footer-ts"></span>&nbsp;&nbsp;&mdash;&nbsp;&nbsp;<span id="footer-version">HWSCAN</span>&nbsp;&nbsp;&mdash;&nbsp;&nbsp;Yafel Garcia
     </footer>
 
     <script>
@@ -633,9 +633,12 @@
                     </div>`).join('');
             }
 
-            // Footer timestamp
+            // Footer timestamp + versión dinámica (viene en la misma respuesta)
             document.getElementById('footer-ts').textContent =
                 new Date(d.timestamp).toLocaleString('es-ES');
+            if (d.app_version) {
+                document.getElementById('footer-version').textContent = 'HWSCAN v' + d.app_version;
+            }
         }
 
         function downloadJSON() {

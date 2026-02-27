@@ -417,16 +417,49 @@ func detectGPU() ([]GPUInfo, error) {
 }
 
 // getVRAM intenta detectar la VRAM de una GPU a partir de su dirección PCI.
-// Estrategia 1: /sys/class/drm/card*/device/mem_info_vram_total (AMD + módulo open NVIDIA)
-// Estrategia 2: lspci -v -s <addr> — BAR prefetchable más grande
+//
+//   - Estrategia 1: /proc/driver/nvidia/gpus/<addr>/information  (NVIDIA driver propietario)
+//   - Estrategia 2: nvidia-smi --query-gpu=memory.total          (si nvidia-smi está presente)
+//   - Estrategia 3: sysfs DRM mem_info_vram_total                (AMD / NVIDIA open)
+//   - Estrategia 4: lspci -v BAR prefetchable >= 512 MB          (último recurso; filtra apertura 256MB)
 func getVRAM(pciAddress string) string {
-	// Normalizar: lspci puede omitir el dominio "0000:"
+	// Normalizar dirección: lspci puede omitir el dominio "0000:"
 	fullAddr := pciAddress
 	if len(strings.Split(pciAddress, ":")) == 2 {
 		fullAddr = "0000:" + pciAddress
 	}
 
-	// Estrategia 1: sysfs DRM
+	// Estrategia 1: /proc/driver/nvidia/gpus/<addr>/information
+	// El kernel NVIDIA escribe aquí "Video Memory: 4096 MB"
+	for _, candidate := range []string{fullAddr, pciAddress} {
+		infoPath := "/proc/driver/nvidia/gpus/" + candidate + "/information"
+		if data, err := os.ReadFile(infoPath); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				if strings.HasPrefix(line, "Video Memory:") {
+					val := strings.TrimSpace(strings.TrimPrefix(line, "Video Memory:"))
+					// formato: "4096 MB" o "4096MB"
+					val = strings.ReplaceAll(val, " ", "")
+					if b := parseVRAMSize(val); b > 0 {
+						return formatVRAMBytes(b)
+					}
+				}
+			}
+		}
+	}
+
+	// Estrategia 2: nvidia-smi (devuelve MiB, ej: "4096 MiB" o solo "4096")
+	if out, err := exec.Command("nvidia-smi",
+		"--query-gpu=memory.total",
+		"--format=csv,noheader,nounits",
+		"--id="+pciAddress).Output(); err == nil {
+		val := strings.TrimSpace(string(out))
+		// nounits → valor en MiB como número entero
+		if mib, err := strconv.ParseUint(val, 10, 64); err == nil && mib > 0 {
+			return formatVRAMBytes(mib * 1024 * 1024)
+		}
+	}
+
+	// Estrategia 3: sysfs DRM — mem_info_vram_total (AMD + módulo open NVIDIA)
 	cards, _ := filepath.Glob("/sys/class/drm/card*/device")
 	for _, cardDev := range cards {
 		resolved, err := filepath.EvalSymlinks(cardDev)
@@ -442,7 +475,9 @@ func getVRAM(pciAddress string) string {
 		}
 	}
 
-	// Estrategia 2: lspci -v — BAR prefetchable más grande
+	// Estrategia 4: lspci -v — BAR prefetchable mayor.
+	// NOTA: NVIDIA expone solo una apertura de 256 MB como BAR prefetchable con el driver
+	// propietario. Filtramos resultados < 512 MB para no reportar la apertura como VRAM.
 	out, err := exec.Command("lspci", "-v", "-s", pciAddress).Output()
 	if err != nil {
 		return ""
@@ -466,7 +501,8 @@ func getVRAM(pciAddress string) string {
 			maxBytes = b
 		}
 	}
-	if maxBytes > 0 {
+	// Solo reportar si el BAR es >= 512 MB para evitar falsos positivos (apertura NVIDIA)
+	if maxBytes >= 512*1024*1024 {
 		return formatVRAMBytes(maxBytes)
 	}
 	return ""
