@@ -14,9 +14,9 @@ func FormatConsole(info *HardwareInfo) string {
 
 	// Header
 	fmt.Fprintln(&sb, "╔══════════════════════════════════════════════════════════════╗")
-	fmt.Fprintln(&sb, "║                    HWSCAN v1.0                               ║")
-	fmt.Fprintln(&sb, "║              Hardware Detection Tool                         ║")
-	fmt.Fprintln(&sb, "║              Desarrollado por: Yafel Garcia                  ║")
+	fmt.Fprintln(&sb, "║                      HWSCAN v1.0                             ║")
+	fmt.Fprintln(&sb, "║                 Hardware Detection Tool                      ║")
+	fmt.Fprintln(&sb, "║           Desarrollado por: Yafel Garcia (Lexharden)         ║")
 	fmt.Fprintln(&sb, "╚══════════════════════════════════════════════════════════════╝")
 	fmt.Fprintln(&sb)
 

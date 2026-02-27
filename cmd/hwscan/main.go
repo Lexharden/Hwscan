@@ -45,16 +45,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Banner
-	printBanner()
-
 	// Paso 1: Detectar hardware
 	fmt.Println("🔍 Detectando hardware del sistema...")
 	fmt.Println()
 
 	hwInfo, err := hardware.Detect()
 	if err != nil {
-		log.Fatalf("❌ Error al detectar hardware: %v\n", err)
+		log.Fatalf("Error al detectar hardware: %v\n", err)
 	}
 
 	// Paso 2: Mostrar información en consola
@@ -74,7 +71,7 @@ func main() {
 			// Exportación automática
 			exportPath, err = export.AutoExport(hwInfo)
 			if err != nil {
-				log.Printf("⚠️  Advertencia: no se pudo exportar JSON: %v\n", err)
+				log.Printf("Advertencia: no se pudo exportar JSON: %v\n", err)
 			} else {
 				_, locationIsUSB := export.GetExportLocation()
 				isUSB = locationIsUSB && exportPath != ""
@@ -91,35 +88,19 @@ func main() {
 	if !*noServerFlag {
 		srv := server.New(hwInfo, *portFlag)
 		if err := srv.Start(); err != nil {
-			log.Printf("⚠️  Advertencia: no se pudo iniciar servidor web: %v\n", err)
+			log.Printf("Advertencia: no se pudo iniciar servidor web: %v\n", err)
 		} else {
-			fmt.Printf("🌐 Servidor web: http://localhost:%d\n", *portFlag)
+			fmt.Printf("Servidor web: http://localhost:%d\n", *portFlag)
 			fmt.Println()
 		}
 	}
 
 	// Paso 5: Mantener el programa ejecutándose
-	fmt.Println("✓ HWSCAN está ejecutándose. Presione Ctrl+C para salir.")
+	fmt.Println("HWSCAN está ejecutándose. Presione Ctrl+C para salir.")
 	fmt.Println()
 
 	// Esperar señal de interrupción
 	waitForShutdown()
-}
-
-// printBanner muestra el banner de inicio
-func printBanner() {
-	banner := `
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║                    🔍 HWSCAN v` + version + `                         ║
-║                  Hardware Detection Tool                      ║
-║                                                               ║
-║          Detección completa de hardware del sistema           ║
-║                  Desarrollado por: Yafel Garcia               ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-`
-	fmt.Println(banner)
 }
 
 // showHelp muestra la ayuda del programa
@@ -158,6 +139,7 @@ DESCRIPCIÓN:
     HWSCAN detecta automáticamente el hardware del sistema incluyendo:
     - CPU (modelo, velocidad, núcleos)
     - Memoria RAM (capacidad, módulos, velocidades)
+	- Disco(s) (modelo, capacidad, tipo)
     - Placa Madre (fabricante, modelo, BIOS)
     - GPU (tarjetas gráficas instaladas)
 
@@ -169,10 +151,10 @@ INTEGRACIÓN:
     como parte de un sistema booteable de diagnóstico de hardware.
 
 AUTOR:
-    Yafel Garcia - Hardware Detection Specialist
+    Yafel Garcia (Lexharden)
     Copyright © 2026
 
-Para más información visite: https://github.com/Lexharden/hwscan
+Para más información visite: https://github.com/Lexharden/Hwscan
 `
 	fmt.Println(help)
 }
@@ -186,10 +168,10 @@ func waitForShutdown() {
 	<-sigChan
 
 	fmt.Println()
-	fmt.Println("⏹️  Recibida señal de terminación. Cerrando HWSCAN...")
+	fmt.Println("Recibida señal de terminación. Cerrando HWSCAN...")
 
 	// Dar tiempo para cerrar conexiones
 	time.Sleep(500 * time.Millisecond)
 
-	fmt.Println("👋 ¡Hasta pronto!")
+	fmt.Println("¡Hasta pronto!")
 }

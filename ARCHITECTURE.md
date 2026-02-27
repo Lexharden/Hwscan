@@ -1,7 +1,7 @@
 # HWSCAN - Arquitectura del Sistema
 
 **Desarrollado por: Yafel Garcia**  
-📅 2026 | Enterprise Hardware Detection Tool
+2026 | Enterprise Hardware Detection Tool
 
 ---
 

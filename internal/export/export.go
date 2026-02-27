@@ -165,9 +165,9 @@ func FormatExportMessage(filepath string, isUSB bool) string {
 	sb.WriteString("\n┌─ EXPORTACIÓN ────────────────────────────────────────────────┐\n")
 
 	if isUSB {
-		sb.WriteString("│ ✓ Archivo exportado a dispositivo USB\n")
+		sb.WriteString("│Archivo exportado a dispositivo USB\n")
 	} else {
-		sb.WriteString("│ ✓ Archivo exportado al directorio actual\n")
+		sb.WriteString("│Archivo exportado al directorio actual\n")
 	}
 
 	sb.WriteString(fmt.Sprintf("│ Ruta: %s\n", filepath))

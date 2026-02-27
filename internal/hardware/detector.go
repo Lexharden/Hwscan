@@ -406,9 +406,92 @@ func detectGPU() ([]GPUInfo, error) {
 				gpu.Model = description
 			}
 
+			// Detectar VRAM
+			gpu.MemorySize = getVRAM(pciAddress)
+
 			gpus = append(gpus, gpu)
 		}
 	}
 
 	return gpus, nil
+}
+
+// getVRAM intenta detectar la VRAM de una GPU a partir de su dirección PCI.
+// Estrategia 1: /sys/class/drm/card*/device/mem_info_vram_total (AMD + módulo open NVIDIA)
+// Estrategia 2: lspci -v -s <addr> — BAR prefetchable más grande
+func getVRAM(pciAddress string) string {
+	// Normalizar: lspci puede omitir el dominio "0000:"
+	fullAddr := pciAddress
+	if len(strings.Split(pciAddress, ":")) == 2 {
+		fullAddr = "0000:" + pciAddress
+	}
+
+	// Estrategia 1: sysfs DRM
+	cards, _ := filepath.Glob("/sys/class/drm/card*/device")
+	for _, cardDev := range cards {
+		resolved, err := filepath.EvalSymlinks(cardDev)
+		if err != nil {
+			continue
+		}
+		if strings.HasSuffix(resolved, fullAddr) || strings.HasSuffix(resolved, pciAddress) {
+			if data, err := os.ReadFile(cardDev + "/mem_info_vram_total"); err == nil {
+				if b, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64); err == nil && b > 0 {
+					return formatVRAMBytes(b)
+				}
+			}
+		}
+	}
+
+	// Estrategia 2: lspci -v — BAR prefetchable más grande
+	out, err := exec.Command("lspci", "-v", "-s", pciAddress).Output()
+	if err != nil {
+		return ""
+	}
+
+	var maxBytes uint64
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.Contains(line, "prefetchable") || strings.Contains(line, "non-prefetchable") {
+			continue
+		}
+		idx := strings.Index(line, "[size=")
+		if idx < 0 {
+			continue
+		}
+		sizeStr := line[idx+6:]
+		if end := strings.Index(sizeStr, "]"); end > 0 {
+			sizeStr = sizeStr[:end]
+		}
+		if b := parseVRAMSize(sizeStr); b > maxBytes {
+			maxBytes = b
+		}
+	}
+	if maxBytes > 0 {
+		return formatVRAMBytes(maxBytes)
+	}
+	return ""
+}
+
+// parseVRAMSize convierte strings como "8G", "256M", "512K" a bytes.
+func parseVRAMSize(s string) uint64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	multipliers := map[byte]uint64{'G': 1 << 30, 'M': 1 << 20, 'K': 1 << 10}
+	if mult, ok := multipliers[s[len(s)-1]]; ok {
+		if n, err := strconv.ParseFloat(s[:len(s)-1], 64); err == nil {
+			return uint64(n * float64(mult))
+		}
+	}
+	n, _ := strconv.ParseUint(s, 10, 64)
+	return n
+}
+
+// formatVRAMBytes formatea bytes de VRAM en una cadena legible ("8 GB", "512 MB").
+func formatVRAMBytes(b uint64) string {
+	if gb := float64(b) / (1 << 30); gb >= 1 {
+		return fmt.Sprintf("%.0f GB", gb)
+	}
+	return fmt.Sprintf("%.0f MB", float64(b)/(1<<20))
 }
