@@ -3,4 +3,4 @@
 package version
 
 // Current es la versión actual de HWSCAN.
-const Current = "1.1.1"
+const Current = "1.1.2"
