@@ -6,7 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="$SCRIPT_DIR/work"
 OUTPUT_DIR="$SCRIPT_DIR/output"
-OUTPUT_ISO="$OUTPUT_DIR/alpine-hwscan-3.23.3-x86_64.iso"
+OUTPUT_ISO="$OUTPUT_DIR/hwscan-live-x86_64.iso"
 
 echo "=================================================="
 echo "  HWSCAN Build Verification Script"
@@ -15,6 +15,13 @@ echo ""
 
 ERRORS=0
 WARNINGS=0
+
+# Hex dump portable (sin depender de xxd / vim-common)
+hex_at() {
+    local file="$1" skip="$2" count="$3"
+    od -An -tx1 -N "$count" -j "$skip" "$file" 2>/dev/null | tr -d ' \n'
+}
+
 
 # Check 1: Work directory should be cleaned
 echo -n "[1/8] Checking work directory cleanup... "
@@ -42,7 +49,7 @@ fi
 echo -n "[3/8] Checking ISO bootability (MBR)... "
 if [ -f "$OUTPUT_ISO" ]; then
     # Check for MBR signature (0x55AA at offset 510)
-    MBR_SIG=$(dd if="$OUTPUT_ISO" bs=1 skip=510 count=2 2>/dev/null | xxd -p)
+    MBR_SIG=$(hex_at "$OUTPUT_ISO" 510 2)
     if [ "$MBR_SIG" = "55aa" ]; then
         echo "✓ OK"
     else
@@ -54,25 +61,23 @@ else
     echo "⊘ SKIP (no ISO)"
 fi
 
-# Check 4: Extract and verify modloop modifications
-echo -n "[4/8] Verifying modloop modifications... "
+# Check 4: Extract and verify apkovl (overlay) contents
+echo -n "[4/8] Verifying apkovl (hwscan + auto-login)... "
 if [ -f "$OUTPUT_ISO" ]; then
     TMP_DIR=$(mktemp -d)
-    
-    # Extract modloop from ISO
-    xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /boot/modloop-lts "$TMP_DIR/modloop-lts" 2>&1 > /dev/null
-    
-    if [ -f "$TMP_DIR/modloop-lts" ]; then
-        # Extract modloop
-        unsquashfs -d "$TMP_DIR/modloop_check" "$TMP_DIR/modloop-lts" > /dev/null 2>&1
-        
-        # Check for hwscan binary
-        if [ -f "$TMP_DIR/modloop_check/usr/local/bin/hwscan" ]; then
+
+    xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /localhost.apkovl.tar.gz "$TMP_DIR/localhost.apkovl.tar.gz" >/dev/null 2>&1
+
+    if [ -f "$TMP_DIR/localhost.apkovl.tar.gz" ]; then
+        mkdir -p "$TMP_DIR/apkovl"
+        tar -xzf "$TMP_DIR/localhost.apkovl.tar.gz" -C "$TMP_DIR/apkovl" --no-same-owner --no-same-permissions
+
+        FAIL_APKOVL=0
+
+        if [ -f "$TMP_DIR/apkovl/usr/bin/hwscan" ]; then
             echo "✓ OK"
-            echo "      hwscan binary found in modloop"
-            
-            # Check if it's executable
-            if [ -x "$TMP_DIR/modloop_check/usr/local/bin/hwscan" ]; then
+            echo "      hwscan binary found in apkovl (/usr/bin/hwscan)"
+            if [ -x "$TMP_DIR/apkovl/usr/bin/hwscan" ]; then
                 echo "      Binary is executable ✓"
             else
                 echo "      ⚠️  Binary is NOT executable"
@@ -80,23 +85,41 @@ if [ -f "$OUTPUT_ISO" ]; then
             fi
         else
             echo "❌ FAIL"
-            echo "      hwscan binary NOT found in modloop"
+            echo "      hwscan binary NOT found in apkovl at /usr/bin/hwscan"
             ERRORS=$((ERRORS + 1))
+            FAIL_APKOVL=1
         fi
-        
-        # Check for autostart scripts
-        if [ -f "$TMP_DIR/modloop_check/etc/local.d/50-hwscan.start" ]; then
-            echo "      Autostart script found ✓"
-        else
-            echo "      ⚠️  Autostart script NOT found"
-            WARNINGS=$((WARNINGS + 1))
+
+        if [ "$FAIL_APKOVL" -eq 0 ]; then
+            if [ -x "$TMP_DIR/apkovl/usr/sbin/autologin-root" ] \
+               && [ -f "$TMP_DIR/apkovl/etc/inittab" ] \
+               && grep -q "autologin-root" "$TMP_DIR/apkovl/etc/inittab"; then
+                echo "      Auto-login root (inittab + wrapper) found ✓"
+            else
+                echo "      ⚠️  Auto-login root NOT found in inittab/wrapper"
+                WARNINGS=$((WARNINGS + 1))
+            fi
+
+            if [ -f "$TMP_DIR/apkovl/root/.profile" ] && grep -q "hwscan" "$TMP_DIR/apkovl/root/.profile"; then
+                echo "      Autostart hwscan (.profile) found ✓"
+            else
+                echo "      ⚠️  Autostart hwscan NOT found in /root/.profile"
+                WARNINGS=$((WARNINGS + 1))
+            fi
+
+            if [ -d "$TMP_DIR/apkovl/usr/share/hwscan/web" ]; then
+                echo "      Web UI files found ✓"
+            else
+                echo "      ⚠️  Web UI files NOT found"
+                WARNINGS=$((WARNINGS + 1))
+            fi
         fi
     else
         echo "❌ FAIL"
-        echo "      Could not extract modloop from ISO"
+        echo "      Could not extract localhost.apkovl.tar.gz from ISO"
         ERRORS=$((ERRORS + 1))
     fi
-    
+
     rm -rf "$TMP_DIR"
 else
     echo "⊘ SKIP (no ISO)"
@@ -106,7 +129,7 @@ fi
 echo -n "[5/8] Verifying SYSLINUX boot config... "
 if [ -f "$OUTPUT_ISO" ]; then
     TMP_DIR=$(mktemp -d)
-    xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /boot/syslinux/syslinux.cfg "$TMP_DIR/syslinux.cfg" 2>&1 > /dev/null
+    xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /boot/syslinux/syslinux.cfg "$TMP_DIR/syslinux.cfg" >/dev/null 2>&1
     
     if [ -f "$TMP_DIR/syslinux.cfg" ]; then
         if grep -q "modloop_verify=no" "$TMP_DIR/syslinux.cfg"; then
@@ -133,17 +156,18 @@ fi
 echo -n "[6/8] Verifying GRUB boot config... "
 if [ -f "$OUTPUT_ISO" ]; then
     TMP_DIR=$(mktemp -d)
-    xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /boot/grub/grub.cfg "$TMP_DIR/grub.cfg" 2>&1 > /dev/null
+    xorriso -osirrox on -indev "$OUTPUT_ISO" -extract /boot/grub/grub.cfg "$TMP_DIR/grub.cfg" >/dev/null 2>&1
     
     if [ -f "$TMP_DIR/grub.cfg" ]; then
-        if grep -q "modloop_verify=no" "$TMP_DIR/grub.cfg"; then
+        if grep -q "vmlinuz-lts" "$TMP_DIR/grub.cfg" \
+           && grep -q "modloop_verify=no" "$TMP_DIR/grub.cfg" \
+           && ! grep -q "alpine_dev=LABEL:" "$TMP_DIR/grub.cfg"; then
             echo "✓ OK"
-            echo "      Found 'modloop_verify=no' in GRUB config"
+            echo "      GRUB config OK (stock autodetect, no LABEL dependency)"
         else
-            echo "⚠️  WARNING"
-            echo "      'modloop_verify=no' NOT found in GRUB config"
-            echo "      UEFI boot may fail with signature error"
-            WARNINGS=$((WARNINGS + 1))
+            echo "❌ FAIL"
+            echo "      GRUB config wrong (must have vmlinuz-lts + modloop_verify=no, no alpine_dev=LABEL)"
+            ERRORS=$((ERRORS + 1))
         fi
     else
         echo "⚠️  WARNING"
@@ -160,7 +184,7 @@ fi
 echo -n "[7/8] Checking ISO hybrid capability... "
 if [ -f "$OUTPUT_ISO" ]; then
     # Check for GPT header (for hybrid ISO)
-    GPT_SIG=$(dd if="$OUTPUT_ISO" bs=1 skip=512 count=8 2>/dev/null | xxd -p)
+    GPT_SIG=$(hex_at "$OUTPUT_ISO" 512 8)
     if [[ "$GPT_SIG" == "4546492050415254"* ]]; then
         echo "✓ OK"
         echo "      ISO is hybrid (BIOS+UEFI), can be dd'd to USB"
@@ -246,7 +270,7 @@ else
     echo "Please fix the errors above and rebuild."
     echo ""
     echo "To rebuild:"
-    echo "  ./build-v3.sh"
+    echo "  ./build.sh"
     echo ""
 fi
 
