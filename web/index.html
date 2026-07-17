@@ -4,537 +4,608 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HWSCAN</title>
+    <script>
+        try {
+            const savedTheme = localStorage.getItem('hwscan-theme');
+            document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark'
+                ? savedTheme
+                : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        } catch (_) {}
+    </script>
     <style>
         :root {
-            --bg:        #0a0a0f;
-            --surface:   #111118;
-            --border:    #1e1e2e;
-            --accent:    #00d4aa;
-            --accent2:   #6c63ff;
-            --text:      #e2e8f0;
-            --muted:     #64748b;
-            --label:     #94a3b8;
+            color-scheme: light;
+            --canvas: #f3f5f7;
+            --surface: #ffffff;
+            --surface-raised: #ffffff;
+            --surface-subtle: #f7f8fa;
+            --line: #dfe3e8;
+            --line-strong: #cbd1d8;
+            --ink: #17202a;
+            --ink-soft: #4f5b67;
+            --ink-faint: #76828e;
+            --brand: #165dff;
+            --brand-hover: #0f4fdc;
+            --brand-soft: #edf3ff;
+            --success: #14804a;
+            --success-soft: #eaf7f0;
+            --danger: #b42318;
+            --danger-soft: #fff1f0;
+            --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .05);
+            --radius: 10px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html[data-theme="dark"] {
+            color-scheme: dark;
+            --canvas: #0d1117;
+            --surface: #151b23;
+            --surface-raised: #1a212b;
+            --surface-subtle: #11171e;
+            --line: #29313c;
+            --line-strong: #3a4552;
+            --ink: #e8edf2;
+            --ink-soft: #adb7c2;
+            --ink-faint: #7f8b98;
+            --brand: #5b8cff;
+            --brand-hover: #7ca3ff;
+            --brand-soft: #18284b;
+            --success: #53c98a;
+            --success-soft: #132c22;
+            --danger: #ff8a80;
+            --danger-soft: #351b1d;
+            --shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 12px 28px rgba(0, 0, 0, .18);
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            margin: 0;
             min-height: 100vh;
-            font-size: 14px;
-            line-height: 1.6;
+            background: var(--canvas);
+            color: var(--ink);
+            font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            transition: background-color .2s ease, color .2s ease;
         }
 
-        /* ── HEADER ── */
-        .header {
-            border-bottom: 1px solid var(--border);
-            padding: 20px 40px;
+        button { font: inherit; }
+        button:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 28%, transparent); outline-offset: 2px; }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            height: 64px;
+            border-bottom: 1px solid var(--line);
+            background: color-mix(in srgb, var(--surface) 92%, transparent);
+            backdrop-filter: blur(14px);
+        }
+
+        .topbar-inner {
+            width: min(1180px, calc(100% - 40px));
+            height: 100%;
+            margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            position: sticky;
-            top: 0;
-            background: rgba(10,10,15,0.9);
-            backdrop-filter: blur(12px);
-            z-index: 100;
         }
 
-        .logo {
+        .brand {
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
-        .logo-mark {
-            width: 32px;
-            height: 32px;
-            border: 2px solid var(--accent);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent);
-            font-weight: 700;
-            font-size: 13px;
-            letter-spacing: -0.5px;
+        .brand-mark {
+            position: relative;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: var(--ink);
+            color: var(--surface);
+            display: grid;
+            place-items: center;
+            font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+            letter-spacing: -.04em;
         }
 
-        .logo-text {
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--text);
+        .brand-mark::after {
+            content: "";
+            position: absolute;
+            right: 5px;
+            bottom: 5px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--brand);
         }
 
-        .header-right {
+        .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+        .brand-context { color: var(--ink-faint); font-size: 12px; margin-left: 2px; }
+
+        .topbar-actions {
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .connection {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 0 11px;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            color: var(--ink-soft);
+            background: var(--surface);
+            font-size: 12px;
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            background: var(--muted);
+            background: var(--ink-faint);
         }
 
         .status-dot.live {
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-            animation: pulse 2s infinite;
+            background: var(--success);
+            box-shadow: 0 0 0 3px var(--success-soft);
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0.4; }
+        .icon-button {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            color: var(--ink-soft);
+            background: var(--surface);
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
         }
 
-        .header-label {
-            font-size: 12px;
-            color: var(--muted);
-            letter-spacing: 1px;
+        .icon-button:hover { border-color: var(--line-strong); color: var(--ink); background: var(--surface-subtle); }
+        .icon-button svg { width: 17px; height: 17px; }
+        .theme-sun { display: none; }
+        html[data-theme="dark"] .theme-sun { display: block; }
+        html[data-theme="dark"] .theme-moon { display: none; }
+
+        .main {
+            width: min(1180px, calc(100% - 40px));
+            margin: 0 auto;
+            padding: 44px 0 64px;
+        }
+
+        .loading {
+            min-height: 62vh;
+            display: grid;
+            place-items: center;
+            text-align: center;
+        }
+
+        .loading-inner { display: grid; justify-items: center; gap: 14px; }
+        .loader {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--line);
+            border-top-color: var(--brand);
+            border-radius: 50%;
+            animation: spin .75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading strong { display: block; font-size: 14px; }
+        .loading p { margin: 2px 0 0; color: var(--ink-faint); font-size: 12px; }
+
+        .page-intro {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        .eyebrow {
+            margin: 0 0 7px;
+            color: var(--brand);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .09em;
             text-transform: uppercase;
         }
 
-        /* ── LAYOUT ── */
-        .main {
-            padding: 40px;
-            max-width: 1100px;
-            margin: 0 auto;
+        h1 {
+            margin: 0;
+            color: var(--ink);
+            font-size: clamp(25px, 3vw, 34px);
+            font-weight: 700;
+            letter-spacing: -.035em;
+            line-height: 1.15;
         }
 
-        /* ── LOADING ── */
-        .loading {
-            display: flex;
-            flex-direction: column;
+        .intro-copy { margin: 8px 0 0; color: var(--ink-soft); max-width: 580px; }
+
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+        .btn {
+            min-height: 38px;
+            padding: 0 14px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 60vh;
-            gap: 20px;
-        }
-
-        .loader {
-            width: 40px;
-            height: 40px;
-            border: 1px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .loading p {
-            color: var(--muted);
-            font-size: 13px;
-            letter-spacing: 1px;
-        }
-
-        /* ── SECTION TITLE ── */
-        .section-title {
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        /* ── CARD ── */
-        .card {
+            gap: 8px;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            color: var(--ink-soft);
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            margin-bottom: 16px;
-            overflow: hidden;
-            transition: border-color 0.2s;
+            font-size: 12px;
+            font-weight: 650;
+            cursor: pointer;
+            transition: background .15s, border-color .15s, color .15s, transform .15s;
         }
 
-        .card:hover { border-color: #2a2a3e; }
+        .btn:hover { border-color: var(--line-strong); color: var(--ink); background: var(--surface-subtle); }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { border-color: var(--brand); background: var(--brand); color: #fff; }
+        .btn-primary:hover { border-color: var(--brand-hover); background: var(--brand-hover); color: #fff; }
+        .btn svg { width: 15px; height: 15px; }
 
-        .card-head {
-            padding: 18px 24px;
-            border-bottom: 1px solid var(--border);
+        .machine-strip {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 24px;
+            padding: 13px 16px;
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--brand);
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        .machine-label { color: var(--ink-faint); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; }
+        .machine-value { color: var(--ink); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .stack { display: grid; gap: 20px; }
+        .section { scroll-margin-top: 84px; }
+
+        .section-heading {
             display: flex;
             align-items: center;
             justify-content: space-between;
-        }
-
-        .card-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-            letter-spacing: 0.5px;
-        }
-
-        .card-badge {
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--accent);
-            background: rgba(0,212,170,0.08);
-            border: 1px solid rgba(0,212,170,0.2);
-            padding: 3px 10px;
-            border-radius: 20px;
-        }
-
-        .card-badge.purple {
-            color: var(--accent2);
-            background: rgba(108,99,255,0.08);
-            border-color: rgba(108,99,255,0.2);
-        }
-
-        .card-body { padding: 0 24px; }
-
-        /* ── ROW ── */
-        .row {
-            display: flex;
-            align-items: baseline;
-            padding: 14px 0;
-            border-bottom: 1px solid var(--border);
-            gap: 16px;
-        }
-
-        .row:last-child { border-bottom: none; }
-
-        .row-label {
-            font-size: 11px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            color: var(--muted);
-            min-width: 120px;
-            flex-shrink: 0;
-        }
-
-        .row-value { color: var(--text); font-size: 13px; }
-
-        /* ── STAT BAR ── */
-        .stat-bar {
-            display: flex;
-            align-items: flex-start;
-            gap: 0;
-            padding: 20px 0;
-            flex-wrap: wrap;
-        }
-
-        .stat-item {
-            flex: 1;
-            min-width: 100px;
-            padding: 0 20px 0 0;
-            border-right: 1px solid var(--border);
-            margin-right: 20px;
-        }
-
-        .stat-item:last-child { border-right: none; margin-right: 0; }
-
-        .stat-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--muted);
-            margin-bottom: 6px;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: 300;
-            color: var(--text);
-            letter-spacing: -1px;
-        }
-
-        .stat-unit {
-            font-size: 12px;
-            color: var(--muted);
-            margin-left: 3px;
-            font-weight: 400;
-            letter-spacing: 0;
-        }
-
-        /* ── MODULE GRID ── */
-        .module-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-            padding: 16px 0;
-        }
-
-        .module {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px 16px;
-        }
-
-        .module-index {
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--accent);
+            min-height: 26px;
             margin-bottom: 8px;
         }
 
-        .module-size {
-            font-size: 22px;
-            font-weight: 300;
-            color: var(--text);
-            margin-bottom: 4px;
-        }
-
-        .module-detail {
-            font-size: 11px;
-            color: var(--muted);
-            line-height: 1.8;
-        }
-
-        /* ── GPU ── */
-        .gpu-entry {
-            padding: 16px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .gpu-entry:last-child { border-bottom: none; }
-
-        .gpu-name {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-            margin-bottom: 6px;
-        }
-
-        .gpu-meta {
-            font-size: 11px;
-            color: var(--muted);
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .gpu-meta span::before {
-            content: '/ ';
-            color: var(--border);
-        }
-
-        .gpu-meta span:first-child::before { content: ''; }
-
-        /* ── ACTIONS ── */
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 32px;
-            margin-bottom: 16px;
-        }
-
-        .btn {
-            padding: 10px 22px;
-            border-radius: 8px;
+        .section-title {
+            margin: 0;
+            color: var(--ink-soft);
             font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            transition: all 0.15s;
+            font-weight: 700;
+            letter-spacing: .01em;
         }
 
-        .btn-primary {
-            background: var(--accent);
-            color: #000;
-            border-color: var(--accent);
-        }
+        .section-index { color: var(--ink-faint); font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-        .btn-primary:hover { background: #00bfaa; }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--label);
-        }
-
-        .btn-ghost:hover {
+        .card {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             background: var(--surface);
-            color: var(--text);
-            border-color: #2a2a3e;
+            box-shadow: var(--shadow);
         }
 
-        /* ── FOOTER ── */
+        .card-head {
+            min-height: 58px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .card-title { color: var(--ink); font-size: 14px; font-weight: 680; overflow-wrap: anywhere; }
+        .card-badge {
+            flex: none;
+            padding: 4px 8px;
+            border-radius: 5px;
+            color: var(--brand);
+            background: var(--brand-soft);
+            font-size: 10px;
+            font-weight: 750;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .card-body { padding: 0 18px; }
+
+        .stat-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            padding: 18px 0;
+        }
+
+        .stat-item { min-width: 0; padding: 0 16px; border-right: 1px solid var(--line); }
+        .stat-item:first-child { padding-left: 0; }
+        .stat-item:last-child { padding-right: 0; border-right: 0; }
+        .stat-label { margin-bottom: 5px; color: var(--ink-faint); font-size: 10px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; }
+        .stat-value { color: var(--ink); font-size: 23px; font-weight: 700; letter-spacing: -.035em; white-space: nowrap; }
+        .stat-unit { margin-left: 3px; color: var(--ink-faint); font-size: 11px; font-weight: 550; letter-spacing: 0; }
+
+        .row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+        .row:last-child { border-bottom: 0; }
+        .row-label { color: var(--ink-faint); font-size: 11px; font-weight: 650; }
+        .row-value { color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
+
+        .module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; padding: 14px 0; }
+        .module { padding: 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-subtle); }
+        .module-index { margin-bottom: 5px; color: var(--brand); font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+        .module-size { margin-bottom: 4px; color: var(--ink); font-size: 19px; font-weight: 700; letter-spacing: -.025em; }
+        .module-detail { color: var(--ink-faint); font-size: 11px; line-height: 1.65; }
+
+        .gpu-entry { padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .gpu-entry:last-child { border-bottom: 0; }
+        .gpu-name { margin-bottom: 6px; color: var(--ink); font-size: 13px; font-weight: 650; }
+        .gpu-meta { display: flex; flex-wrap: wrap; gap: 7px; color: var(--ink-faint); font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .gpu-meta span { padding: 3px 6px; border-radius: 4px; background: var(--surface-subtle); }
+
         .footer {
-            text-align: center;
-            padding: 24px 40px 40px;
-            color: var(--muted);
+            width: min(1180px, calc(100% - 40px));
+            margin: 0 auto;
+            padding: 20px 0 30px;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            border-top: 1px solid var(--line);
+            color: var(--ink-faint);
             font-size: 11px;
-            letter-spacing: 0.5px;
-            border-top: 1px solid var(--border);
         }
 
-        /* ── ERROR ── */
-        .error-box {
-            border: 1px solid rgba(255,80,80,0.3);
-            background: rgba(255,80,80,0.05);
-            border-radius: 10px;
-            padding: 32px;
-            text-align: center;
-            margin-top: 40px;
+        .error-box { margin-top: 36px; padding: 28px; border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line)); border-radius: var(--radius); background: var(--danger-soft); }
+        .error-box h3 { margin: 0 0 5px; color: var(--danger); font-size: 14px; }
+        .error-box p { margin: 0; color: var(--ink-soft); font-size: 12px; }
+
+        @media (max-width: 840px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .page-intro { align-items: flex-start; flex-direction: column; }
+            .actions { justify-content: flex-start; }
         }
 
-        .error-box h3 { color: #ff6b6b; font-size: 14px; margin-bottom: 8px; }
-        .error-box p  { color: var(--muted); font-size: 12px; }
+        @media (max-width: 600px) {
+            .topbar-inner, .main, .footer { width: min(100% - 28px, 1180px); }
+            .main { padding-top: 28px; }
+            .brand-context, .connection span { display: none; }
+            .connection { width: 36px; justify-content: center; padding: 0; }
+            .page-intro { margin-bottom: 20px; }
+            .actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+            .btn-primary { grid-column: 1 / -1; }
+            .machine-strip { align-items: flex-start; flex-direction: column; gap: 4px; }
+            .stat-bar { grid-template-columns: 1fr 1fr; gap: 18px 0; }
+            .stat-item:nth-child(2) { border-right: 0; padding-right: 0; }
+            .stat-item:nth-child(3) { padding-left: 0; }
+            .row { grid-template-columns: 1fr; gap: 3px; }
+            .footer { flex-direction: column; gap: 4px; }
+        }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 768px) {
-            .header       { padding: 14px 16px; }
-            .main         { padding: 20px 16px; }
-            .card-head,
-            .card-body    { padding-left: 16px; padding-right: 16px; }
-            .stat-bar     { gap: 16px; }
-            .stat-item    { border-right: none; margin-right: 0; min-width: 80px; }
-            .row          { flex-direction: column; gap: 3px; }
-            .row-label    { min-width: unset; }
-            .actions      { flex-direction: column; }
-            .btn          { width: 100%; text-align: center; }
-            .header-label { display: none; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
         }
     </style>
 </head>
 <body>
-
-    <header class="header">
-        <div class="logo">
-            <div class="logo-mark">HW</div>
-            <span class="logo-text">HWScan</span>
-        </div>
-        <div class="header-right">
-            <div class="status-dot" id="status-dot"></div>
-            <span class="header-label" id="status-label">Conectando</span>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand" aria-label="HWSCAN">
+                <div class="brand-mark" aria-hidden="true">HW</div>
+                <div>
+                    <span class="brand-name">HWSCAN</span>
+                    <span class="brand-context">Diagnóstico de hardware</span>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <div class="connection" aria-live="polite">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-label">Conectando</span>
+                </div>
+                <button class="icon-button" type="button" onclick="toggleTheme()" aria-label="Cambiar tema" title="Cambiar tema">
+                    <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M20.5 14.2A8.4 8.4 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/>
+                    </svg>
+                    <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3.5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </header>
 
     <main class="main">
-
         <div id="loading" class="loading">
-            <div class="loader"></div>
-            <p>Leyendo datos del hardware...</p>
+            <div class="loading-inner">
+                <div class="loader" aria-hidden="true"></div>
+                <div>
+                    <strong>Analizando el equipo</strong>
+                    <p>Consultando CPU, memoria y dispositivos</p>
+                </div>
+            </div>
         </div>
 
         <div id="content" style="display:none">
-
-            <div id="machine-id-bar" style="display:none;margin-bottom:20px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center;gap:12px;">
-                <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">ID de Maquina</span>
-                <span id="machine-id-value" style="font-size:12px;color:var(--accent);font-family:monospace;letter-spacing:0.5px;"></span>
+            <div class="page-intro">
+                <div>
+                    <p class="eyebrow">Informe del sistema</p>
+                    <h1>Inventario del equipo</h1>
+                    <p class="intro-copy">Resumen técnico del hardware detectado en esta sesión.</p>
+                </div>
+                <div class="actions" aria-label="Acciones del informe">
+                    <button class="btn btn-primary" type="button" onclick="downloadJSON()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>
+                        Descargar JSON
+                    </button>
+                    <button class="btn" type="button" onclick="downloadCSV()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+                        Descargar CSV
+                    </button>
+                    <button class="btn" type="button" onclick="refreshData()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M18.2 16a7 7 0 1 1 .6-7.2L20 11"/></svg>
+                        Actualizar
+                    </button>
+                </div>
             </div>
 
-            <p class="section-title">Procesador</p>
-            <div class="card">
-                <div class="card-head">
-                    <span class="card-title" id="cpu-model">—</span>
-                    <span class="card-badge" id="cpu-vendor">—</span>
-                </div>
-                <div class="card-body">
-                    <div class="stat-bar">
-                        <div class="stat-item">
-                            <div class="stat-label">Velocidad</div>
-                            <div class="stat-value" id="cpu-speed">—<span class="stat-unit">GHz</span></div>
+            <div id="machine-id-bar" class="machine-strip">
+                <span class="machine-label">Identificador del equipo</span>
+                <span id="machine-id-value" class="machine-value"></span>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="stack">
+                    <section class="section" id="cpu-section">
+                        <div class="section-heading">
+                            <h2 class="section-title">Procesador</h2>
+                            <span class="section-index">01</span>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Nucleos Fisicos</div>
-                            <div class="stat-value" id="cpu-cores">—</div>
+                        <div class="card">
+                            <div class="card-head">
+                                <span class="card-title" id="cpu-model">—</span>
+                                <span class="card-badge" id="cpu-vendor">—</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="stat-bar">
+                                    <div class="stat-item">
+                                        <div class="stat-label">Velocidad</div>
+                                        <div class="stat-value" id="cpu-speed">—<span class="stat-unit">GHz</span></div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">Núcleos</div>
+                                        <div class="stat-value" id="cpu-cores">—</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">Hilos</div>
+                                        <div class="stat-value" id="cpu-threads">—</div>
+                                    </div>
+                                    <div class="stat-item" id="cache-block" style="display:none">
+                                        <div class="stat-label">Caché</div>
+                                        <div class="stat-value" id="cpu-cache">—</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Hilos</div>
-                            <div class="stat-value" id="cpu-threads">—</div>
+                    </section>
+
+                    <section class="section">
+                        <div class="section-heading">
+                            <h2 class="section-title">Memoria instalada</h2>
+                            <span class="section-index">02</span>
                         </div>
-                        <div class="stat-item" id="cache-block" style="display:none">
-                            <div class="stat-label">Cache L3</div>
-                            <div class="stat-value" id="cpu-cache">—</div>
+                        <div class="card">
+                            <div class="card-head">
+                                <span class="card-title">Memoria RAM</span>
+                                <span class="card-badge" id="mem-total-badge">—</span>
+                            </div>
+                            <div class="card-body">
+                                <div id="mem-modules" class="module-grid"></div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </section>
 
-            <p class="section-title">Memoria</p>
-            <div class="card">
-                <div class="card-head">
-                    <span class="card-title">RAM</span>
-                    <span class="card-badge" id="mem-total-badge">—</span>
+                    <section class="section" id="disk-section" style="display:none">
+                        <div class="section-heading">
+                            <h2 class="section-title">Almacenamiento</h2>
+                            <span class="section-index">03</span>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <span class="card-title">Unidades físicas</span>
+                                <span class="card-badge" id="disk-count-badge">—</span>
+                            </div>
+                            <div class="card-body" id="disk-list"></div>
+                        </div>
+                    </section>
                 </div>
-                <div class="card-body">
-                    <div id="mem-modules" class="module-grid"></div>
-                </div>
-            </div>
 
-            <p class="section-title">Placa Base</p>
-            <div class="card">
-                <div class="card-head">
-                    <span class="card-title" id="mb-product">—</span>
-                    <span class="card-badge purple" id="mb-manufacturer">—</span>
-                </div>
-                <div class="card-body">
-                    <div class="row" id="mb-version-row" style="display:none">
-                        <span class="row-label">Version</span>
-                        <span class="row-value" id="mb-version">—</span>
-                    </div>
-                    <div class="row" id="mb-bios-row" style="display:none">
-                        <span class="row-label">BIOS</span>
-                        <span class="row-value" id="mb-bios">—</span>
-                    </div>
-                </div>
-            </div>
+                <aside class="stack">
+                    <section class="section">
+                        <div class="section-heading">
+                            <h2 class="section-title">Placa base</h2>
+                            <span class="section-index">04</span>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <span class="card-title" id="mb-product">—</span>
+                                <span class="card-badge" id="mb-manufacturer">—</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row" id="mb-version-row" style="display:none">
+                                    <span class="row-label">Versión</span>
+                                    <span class="row-value" id="mb-version">—</span>
+                                </div>
+                                <div class="row" id="mb-bios-row" style="display:none">
+                                    <span class="row-label">BIOS</span>
+                                    <span class="row-value" id="mb-bios">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
-            <div id="gpu-section" style="display:none">
-                <p class="section-title">Tarjeta Grafica</p>
-                <div class="card">
-                    <div class="card-body" id="gpu-list" style="padding-top:4px; padding-bottom:4px;"></div>
-                </div>
+                    <section class="section" id="gpu-section" style="display:none">
+                        <div class="section-heading">
+                            <h2 class="section-title">Gráficos</h2>
+                            <span class="section-index">05</span>
+                        </div>
+                        <div class="card">
+                            <div class="card-body" id="gpu-list"></div>
+                        </div>
+                    </section>
+                </aside>
             </div>
-
-            <div id="disk-section" style="display:none">
-                <p class="section-title">Almacenamiento</p>
-                <div class="card">
-                    <div class="card-head">
-                        <span class="card-title">Discos</span>
-                        <span class="card-badge" id="disk-count-badge">—</span>
-                    </div>
-                    <div class="card-body" id="disk-list" style="padding-top:4px; padding-bottom:4px;"></div>
-                </div>
-            </div>
-
-            <div class="actions">
-                <button class="btn btn-primary" onclick="downloadJSON()">Exportar JSON</button>
-                <button class="btn btn-ghost"    onclick="refreshData()">Actualizar</button>
-            </div>
-
         </div>
 
         <div id="error" style="display:none">
             <div class="error-box">
-                <h3>Error de conexion</h3>
+                <h3>No se pudo cargar el diagnóstico</h3>
                 <p id="error-message"></p>
             </div>
         </div>
-
     </main>
 
     <footer class="footer">
-        <span id="footer-ts"></span>&nbsp;&nbsp;&mdash;&nbsp;&nbsp;<span id="footer-version">HWSCAN</span>&nbsp;&nbsp;&mdash;&nbsp;&nbsp;Yafel Garcia
+        <span><span id="footer-version">HWSCAN</span> · Diagnóstico local</span>
+        <span id="footer-ts"></span>
     </footer>
 
     <script>
         let hardwareData = null;
 
+        function resolveInitialTheme() {
+            const saved = localStorage.getItem('hwscan-theme');
+            if (saved === 'light' || saved === 'dark') return saved;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.style.colorScheme = theme;
+        }
+
+        function toggleTheme() {
+            const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('hwscan-theme', next);
+        }
+
+        applyTheme(resolveInitialTheme());
         window.addEventListener('DOMContentLoaded', loadHardwareInfo);
 
         async function loadHardwareInfo() {
@@ -556,34 +627,38 @@
         }
 
         function render(d) {
+            const cpu = d.cpu || {};
+            const mem = d.memory || {};
+            const mb  = d.motherboard || {};
+
             // CPU
-            document.getElementById('cpu-model').textContent  = d.cpu.model  || '—';
-            document.getElementById('cpu-vendor').textContent = d.cpu.vendor || '—';
-            document.getElementById('cpu-cores').innerHTML   = d.cpu.cores;
-            document.getElementById('cpu-threads').innerHTML = d.cpu.threads;
-            const ghz = (d.cpu.speed_mhz / 1000).toFixed(2);
+            document.getElementById('cpu-model').textContent  = cpu.model  || '—';
+            document.getElementById('cpu-vendor').textContent = cpu.vendor || '—';
+            document.getElementById('cpu-cores').innerHTML   = cpu.cores ?? '—';
+            document.getElementById('cpu-threads').innerHTML = cpu.threads ?? '—';
+            const ghz = ((cpu.speed_mhz || 0) / 1000).toFixed(2);
             document.getElementById('cpu-speed').innerHTML = `${ghz}<span class="stat-unit">GHz</span>`;
-            if (d.cpu.cache_size) {
+            if (cpu.cache_size) {
                 document.getElementById('cache-block').style.display = '';
-                document.getElementById('cpu-cache').textContent = d.cpu.cache_size;
+                document.getElementById('cpu-cache').textContent = cpu.cache_size;
             }
 
             // Memory
-            document.getElementById('mem-total-badge').textContent = `${d.memory.total_gb.toFixed(1)} GB`;
+            document.getElementById('mem-total-badge').textContent = `${(mem.total_gb || 0).toFixed(1)} GB`;
             const grid = document.getElementById('mem-modules');
-            if (d.memory.modules && d.memory.modules.length) {
+            if (mem.modules && mem.modules.length) {
                 // Un módulo sin tipo ni velocidad = entrada sintética (dmidecode no disponible)
-                const isSynthetic = d.memory.modules.length === 1
-                    && !d.memory.modules[0].type
-                    && !d.memory.modules[0].speed
-                    && !d.memory.modules[0].locator;
-                grid.innerHTML = d.memory.modules.map((m, i) => {
+                const isSynthetic = mem.modules.length === 1
+                    && !mem.modules[0].type
+                    && !mem.modules[0].speed
+                    && !mem.modules[0].locator;
+                grid.innerHTML = mem.modules.map((m, i) => {
                     const label = isSynthetic ? 'Total' : `Ranura ${i + 1}`;
                     const detail = [m.type, m.speed].filter(Boolean).join(' \u00b7 ')
                         + (m.manufacturer && m.manufacturer !== 'Unknown' ? '<br>' + m.manufacturer : '')
                         + (m.part_number ? '<br>' + m.part_number : '')
                         + (m.locator     ? '<br>' + m.locator     : '')
-                        + (isSynthetic   ? '<br><span style="color:var(--muted);font-size:10px">dmidecode no disponible - instalalo para ver detalle de ranuras</span>' : '');
+                        + (isSynthetic   ? '<br><span style="color:var(--ink-faint);font-size:10px">Detalle de ranuras no disponible</span>' : '');
                     return `
                     <div class="module">
                         <div class="module-index">${label}</div>
@@ -592,30 +667,30 @@
                     </div>`;
                 }).join('');
             } else {
-                grid.innerHTML = `<div class="row"><span class="row-value" style="color:var(--muted)">Sin datos de modulos disponibles</span></div>`;
+                grid.innerHTML = `<div class="row"><span class="row-value" style="color:var(--ink-faint)">Sin datos de módulos disponibles</span></div>`;
             }
 
             // Motherboard
-            document.getElementById('mb-product').textContent      = d.motherboard.product      || '—';
-            document.getElementById('mb-manufacturer').textContent = d.motherboard.manufacturer || '—';
-            if (d.motherboard.version) {
+            document.getElementById('mb-product').textContent      = mb.product      || '—';
+            document.getElementById('mb-manufacturer').textContent = mb.manufacturer || '—';
+            if (mb.version) {
                 document.getElementById('mb-version-row').style.display = '';
-                document.getElementById('mb-version').textContent = d.motherboard.version;
+                document.getElementById('mb-version').textContent = mb.version;
             }
-            if (d.motherboard.bios_vendor) {
+            if (mb.bios_vendor) {
                 document.getElementById('mb-bios-row').style.display = '';
                 document.getElementById('mb-bios').textContent =
-                    `${d.motherboard.bios_vendor} v${d.motherboard.bios_version} (${d.motherboard.bios_date})`;
+                    `${mb.bios_vendor} v${mb.bios_version || ''} (${mb.bios_date || ''})`;
             }
 
             // GPU
             if (d.gpu && d.gpu.length) {
                 document.getElementById('gpu-section').style.display = '';
-                document.getElementById('gpu-list').innerHTML = d.gpu.map((g, i) => `
+                document.getElementById('gpu-list').innerHTML = d.gpu.map((g) => `
                     <div class="gpu-entry">
-                        <div class="gpu-name">${g.vendor} ${g.model}</div>
+                        <div class="gpu-name">${[g.vendor, g.model].filter(Boolean).join(' ')}</div>
                         <div class="gpu-meta">
-                            <span>PCI ${g.pci_address}</span>
+                            ${g.pci_address ? `<span>PCI ${g.pci_address}</span>` : ''}
                             ${g.memory_size ? `<span>VRAM ${g.memory_size}</span>` : ''}
                         </div>
                     </div>`).join('');
@@ -628,10 +703,10 @@
                     d.disks.length === 1 ? '1 disco' : `${d.disks.length} discos`;
                 document.getElementById('disk-list').innerHTML = d.disks.map(disk => `
                     <div class="gpu-entry">
-                        <div class="gpu-name">${disk.model || disk.name}</div>
+                        <div class="gpu-name">${disk.model || disk.name || '—'}</div>
                         <div class="gpu-meta">
-                            <span>/dev/${disk.name}</span>
-                            <span>${disk.size_gb.toFixed(1)} GB</span>
+                            ${disk.name ? `<span>/dev/${disk.name}</span>` : ''}
+                            ${disk.size_gb ? `<span>${disk.size_gb.toFixed(1)} GB</span>` : ''}
                             ${disk.type   ? `<span>${disk.type}</span>`   : ''}
                             ${disk.vendor ? `<span>${disk.vendor}</span>` : ''}
                         </div>
@@ -646,24 +721,185 @@
             }
 
             // Footer timestamp + version dinamica (viene en la misma respuesta)
-            document.getElementById('footer-ts').textContent =
-                new Date(d.timestamp).toLocaleString('es-ES');
+            if (d.timestamp) {
+                document.getElementById('footer-ts').textContent =
+                    new Date(d.timestamp).toLocaleString('es-ES');
+            }
             if (d.app_version) {
                 document.getElementById('footer-version').textContent = 'HWSCAN v' + d.app_version;
             }
         }
 
-        function downloadJSON() {
-            if (!hardwareData) return;
-            const blob = new Blob([JSON.stringify(hardwareData, null, 2)], { type: 'application/json' });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `hwscan-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+        // Omite null/undefined, "", [], {} y objetos cuyos hijos quedaron vacíos.
+        function pruneEmpty(value) {
+            if (value === null || value === undefined) return undefined;
+            if (typeof value === 'string') return value.trim() === '' ? undefined : value;
+            if (typeof value === 'number') return value === 0 ? undefined : value;
+            if (typeof value === 'boolean') return value;
+            if (Array.isArray(value)) {
+                const cleaned = value
+                    .map(pruneEmpty)
+                    .filter(v => v !== undefined);
+                return cleaned.length ? cleaned : undefined;
+            }
+            if (typeof value === 'object') {
+                const out = {};
+                for (const [k, v] of Object.entries(value)) {
+                    // Flags de CPU: útiles en JSON completo, no en inventario limpio vacío
+                    const pruned = pruneEmpty(v);
+                    if (pruned !== undefined) out[k] = pruned;
+                }
+                return Object.keys(out).length ? out : undefined;
+            }
+            return value;
+        }
+
+        function stampFilename(ext) {
+            return `hwscan-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${ext}`;
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        function downloadJSON() {
+            if (!hardwareData) return;
+            const cleaned = pruneEmpty(hardwareData) || {};
+            const blob = new Blob([JSON.stringify(cleaned, null, 2)], { type: 'application/json' });
+            triggerDownload(blob, stampFilename('json'));
+        }
+
+        function csvEscape(value) {
+            const s = String(value);
+            if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+            return s;
+        }
+
+        function hasValue(valor) {
+            if (valor === null || valor === undefined) return false;
+            if (typeof valor === 'string') return valor.trim() !== '';
+            if (typeof valor === 'number') return !Number.isNaN(valor) && valor !== 0;
+            if (Array.isArray(valor)) return valor.length > 0;
+            return true;
+        }
+
+        // CSV legible: Seccion | Elemento | Atributo | Valor
+        // - Seccion: grupo (Procesador, Memoria, ...)
+        // - Elemento: vacío si aplica a toda la sección; nombre si es un ítem (Ranura 1, Disco 1, ...)
+        // - Atributo / Valor: solo datos útiles, ya formateados
+        function buildCSV(data) {
+            const d = pruneEmpty(data) || {};
+            const rows = [['Seccion', 'Elemento', 'Atributo', 'Valor']];
+
+            const add = (seccion, elemento, atributo, valor) => {
+                if (!hasValue(valor)) return;
+                const v = typeof valor === 'number' && !Number.isInteger(valor)
+                    ? Number(valor.toFixed(2))
+                    : valor;
+                rows.push([seccion, elemento || '', atributo, v]);
+            };
+
+            // ── Identificación ──
+            add('Identificacion', '', 'ID de maquina', d.machine_id);
+            if (d.timestamp) {
+                const fecha = new Date(d.timestamp);
+                if (!Number.isNaN(fecha.getTime())) {
+                    add('Identificacion', '', 'Fecha de escaneo', fecha.toLocaleString('es-ES'));
+                }
+            }
+            if (d.app_version) {
+                add('Identificacion', '', 'Version HWSCAN', `v${d.app_version}`);
+            }
+
+            // ── Procesador ──
+            if (d.cpu) {
+                add('Procesador', '', 'Modelo', d.cpu.model);
+                add('Procesador', '', 'Fabricante', d.cpu.vendor);
+                add('Procesador', '', 'Nucleos fisicos', d.cpu.cores);
+                add('Procesador', '', 'Hilos logicos', d.cpu.threads);
+                if (d.cpu.speed_mhz) {
+                    add('Procesador', '', 'Velocidad maxima', `${(d.cpu.speed_mhz / 1000).toFixed(2)} GHz`);
+                }
+                add('Procesador', '', 'Cache', d.cpu.cache_size);
+            }
+
+            // ── Memoria ──
+            if (d.memory) {
+                if (d.memory.total_gb) {
+                    add('Memoria', '', 'Capacidad total', `${Number(d.memory.total_gb).toFixed(1)} GB`);
+                }
+                (d.memory.modules || []).forEach((m, i) => {
+                    const nombre = m.locator
+                        ? `Ranura ${m.locator}`
+                        : `Modulo ${i + 1}`;
+                    add('Memoria', nombre, 'Tamano', m.size);
+                    add('Memoria', nombre, 'Tipo', m.type);
+                    add('Memoria', nombre, 'Velocidad', m.speed);
+                    if (m.manufacturer && m.manufacturer !== 'Unknown') {
+                        add('Memoria', nombre, 'Fabricante', m.manufacturer);
+                    }
+                    add('Memoria', nombre, 'Numero de parte', m.part_number);
+                });
+            }
+
+            // ── Placa base ──
+            if (d.motherboard) {
+                const mb = d.motherboard;
+                add('Placa base', '', 'Fabricante', mb.manufacturer);
+                add('Placa base', '', 'Modelo', mb.product);
+                add('Placa base', '', 'Version', mb.version);
+                add('Placa base', '', 'Numero de serie', mb.serial_number);
+                if (mb.bios_vendor || mb.bios_version || mb.bios_date) {
+                    const bios = [
+                        mb.bios_vendor,
+                        mb.bios_version ? `v${mb.bios_version}` : '',
+                        mb.bios_date ? `(${mb.bios_date})` : '',
+                    ].filter(Boolean).join(' ');
+                    add('Placa base', '', 'BIOS', bios);
+                }
+            }
+
+            // ── GPU ──
+            (d.gpu || []).forEach((g, i) => {
+                const nombre = `GPU ${i + 1}`;
+                const modelo = [g.vendor, g.model].filter(Boolean).join(' ');
+                add('Tarjeta grafica', nombre, 'Modelo', modelo);
+                add('Tarjeta grafica', nombre, 'Direccion PCI', g.pci_address);
+                add('Tarjeta grafica', nombre, 'VRAM', g.memory_size);
+                add('Tarjeta grafica', nombre, 'Driver', g.driver);
+            });
+
+            // ── Almacenamiento ──
+            (d.disks || []).forEach((disk, i) => {
+                const dev = disk.name ? `/dev/${disk.name}` : '';
+                const nombre = disk.model
+                    ? `Disco ${i + 1} (${disk.model})`
+                    : (dev ? `Disco ${i + 1} (${dev})` : `Disco ${i + 1}`);
+                add('Almacenamiento', nombre, 'Dispositivo', dev);
+                add('Almacenamiento', nombre, 'Modelo', disk.model);
+                add('Almacenamiento', nombre, 'Fabricante', disk.vendor);
+                if (disk.size_gb) {
+                    add('Almacenamiento', nombre, 'Capacidad', `${Number(disk.size_gb).toFixed(1)} GB`);
+                }
+                add('Almacenamiento', nombre, 'Tipo', disk.type);
+            });
+
+            return rows.map(r => r.map(csvEscape).join(',')).join('\r\n') + '\r\n';
+        }
+
+        function downloadCSV() {
+            if (!hardwareData) return;
+            // BOM UTF-8 para que Excel abra acentos correctamente
+            const csv = '\uFEFF' + buildCSV(hardwareData);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            triggerDownload(blob, stampFilename('csv'));
         }
 
         function refreshData() {
@@ -672,7 +908,7 @@
             document.getElementById('error').style.display   = 'none';
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('status-dot').classList.remove('live');
-                document.getElementById('status-label').textContent = 'Conectando';
+            document.getElementById('status-label').textContent = 'Conectando';
             loadHardwareInfo();
         }
     </script>

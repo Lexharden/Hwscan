@@ -3,13 +3,17 @@ bin/
 dist/
 *.exe
 
-# ── Build workflow artifacts (keep scripts, ignore generated dirs) ──
+# ── Alpine ISO builder (artefactos generados; los scripts sí van al repo) ──
 build/alpine/base/
 build/alpine/work/
 build/alpine/output/
 
-# ── ISO images ──
+# Cualquier imagen ISO en el proyecto (base Alpine, hwscan-live, etc.)
 *.iso
+**/*.iso
+
+# ── Exportaciones locales de HWSCAN ──
+hwscan-*.json
 
 # ── Go artifacts ──
 *.o

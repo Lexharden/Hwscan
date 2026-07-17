@@ -77,7 +77,7 @@ func (s *Server) Start() error {
 // para que el cliente web no necesite una segunda petición.
 type hardwareResponse struct {
 	*hardware.HardwareInfo
-	AppVersion string `json:"app_version"`
+	AppVersion string `json:"app_version,omitempty"`
 }
 
 // handleHardwareAPI maneja las peticiones al endpoint /api/hardware

@@ -2,184 +2,160 @@
 
 **Herramienta de auditoría de hardware — booteable**
 
-Desarrollado por Yafel Garcia · Go 1.21 · Solo stdlib · v1.0.0
+Desarrollado por Yafel Garcia · Go 1.21 · Solo stdlib · v1.1.2
 
 ---
 
 ## Descripción
 
-HWSCAN detecta y reporta el hardware de cualquier máquina con solo arrancar desde una ISO de Alpine Linux. Presenta la información en consola, la sirve mediante una interfaz web minimalista y la exporta automáticamente a un JSON en USB.
+HWSCAN detecta y reporta el hardware de cualquier máquina al arrancar desde una ISO de Alpine Linux. Muestra la información en consola, en una interfaz web y permite exportarla a JSON o CSV.
 
-Requiere internet para instalar dependencias de GPU.
+La ISO arranca en modo live, hace auto-login como `root` y ejecuta HWSCAN sin intervención. Requiere internet en el primer arranque para instalar `lspci` y `dmidecode` (detección completa de GPU y módulos RAM).
 
 ## Características
 
-- Detección completa: CPU, RAM (módulos individuales), Placa Madre (BIOS incluido), GPU
-- Velocidad del CPU leída desde `/sys/devices/.../cpufreq/cpuinfo_max_freq` (frecuencia máxima real, no idle)
-- Consola formateada con datos al vuelo
-- Servidor HTTP embebido en el puerto 8080 con dashboard web oscuro y responsive
-- Exportación automática a JSON: detecta USB montado, si no hay exporta en el directorio actual
+- Detección: CPU, RAM (módulos), placa madre (BIOS), GPU, discos
 - Identificador único de máquina (`machine_id`)
-- Binario 100% estático (`CGO_ENABLED=0`), sin dependencias externas
-- Multi-arquitectura: `linux/amd64`, `linux/arm64`, `linux/armv7`
+- Consola formateada y servidor HTTP embebido en `:8080`
+- Interfaz web con tema claro/oscuro y exportación JSON/CSV
+- Exportación automática a JSON (USB o directorio actual)
+- Binario 100% estático (`CGO_ENABLED=0`), sin dependencias Go externas
+- ISO híbrida BIOS + UEFI: `hwscan-live-x86_64.iso`
+- Multi-arquitectura del binario: `linux/amd64`, `linux/arm64`, `linux/armv7`
 
 ## Compilación
 
 ```bash
-# Binario para arquitectura actual
-make build
-
-# Binario estático para Linux AMD64 (recomendado para Alpine ISO)
-make build-amd64
-
-# Otros targets
-make build-arm64
-make build-armv7
-make build-all
-
-# Limpiar artefactos
+make build-amd64    # recomendado para la ISO → dist/hwscan
+make build          # arquitectura actual
+make build-all      # amd64 + arm64 + armv7
 make clean
 ```
 
-Los binarios se generan en `bin/`. El target `build-amd64` también copia el binario a `dist/hwscan`, que es la ruta que usa el script de construcción de la ISO.
-
-## Uso
+## Uso local
 
 ```bash
-# Ejecución por defecto: detecta hardware, exporta JSON, levanta servidor web en :8080
-./hwscan
-
-# Puerto personalizado
-./hwscan -port 9090
-
-# Solo consola, sin servidor ni exportación
-./hwscan -no-server -no-export
-
-# Exportar a ruta específica
-./hwscan -output /ruta/mi-reporte.json
-
-# Sin exportación automática
-./hwscan -no-export
-
-# Info de versión
-./hwscan -version
+./bin/hwscan                        # consola + JSON + web :8080
+./bin/hwscan -no-server -no-export  # solo consola
+./bin/hwscan -port 9090
+./bin/hwscan -output /tmp/reporte.json
+./bin/hwscan -version
 ```
-
-### Flags disponibles
 
 | Flag | Default | Descripción |
 |------|---------|-------------|
 | `-port` | `8080` | Puerto del servidor web |
-| `-no-server` | `false` | Deshabilita el servidor HTTP |
-| `-no-export` | `false` | Deshabilita la exportación a JSON |
-| `-output` | `""` | Ruta de salida específica para el JSON |
-| `-version` | — | Muestra la versión y sale |
-| `-help` | — | Muestra la ayuda y sale |
+| `-no-server` | `false` | Desactiva el servidor HTTP |
+| `-no-export` | `false` | Desactiva la exportación automática a JSON |
+| `-output` | `""` | Ruta específica del JSON |
+| `-version` | — | Muestra la versión |
+| `-help` | — | Ayuda |
 
 ## API REST
 
-Cuando el servidor está activo:
-
 | Endpoint | Descripción |
 |----------|-------------|
-| `GET /api/hardware` | JSON completo con toda la info de hardware |
-| `GET /api/health` | Estado del servidor (`{"status":"ok"}`) |
+| `GET /api/hardware` | Hardware detectado (JSON) |
+| `GET /api/health` | Estado del servicio |
 | `GET /` | Dashboard web |
 
-### Ejemplo de respuesta `/api/hardware`
+## Construir la ISO booteable
 
-```json
-{
-  "machine_id": "abc123...",
-  "cpu": {
-    "model": "Intel(R) Core(TM) i7-12700",
-    "vendor": "GenuineIntel",
-    "cores": 12,
-    "threads": 20,
-    "speed_mhz": 4900.0,
-    "cache_size": "25600 KB"
-  },
-  "memory": {
-    "total_gb": 32.0,
-    "modules": [
-      { "size": "16GB", "type": "DDR4", "speed": "3200MHz", "locator": "DIMM1" }
-    ]
-  },
-  "motherboard": {
-    "manufacturer": "ASUSTeK",
-    "product": "PRIME B660M-A",
-    "bios_vendor": "American Megatrends",
-    "bios_version": "1401",
-    "bios_date": "11/14/2022"
-  },
-  "gpu": [
-    { "vendor": "Intel", "model": "UHD Graphics 770", "pci_address": "0000:00:02.0" }
-  ],
-  "timestamp": "2026-02-26T10:30:00Z"
-}
-```
-
-## Estructura del Proyecto
-
-```
-hwscan/
-├── cmd/hwscan/             # Punto de entrada (main.go)
-│   └── main.go             # Flags, orquestación, servidor, shutdown
-├── internal/
-│   ├── hardware/
-│   │   ├── detector.go     # Lectura de /proc/cpuinfo, dmidecode paths, cpufreq, PCI
-│   │   ├── formatter.go    # Salida formateada a consola
-│   │   ├── machineid.go    # Identificador único de la máquina
-│   │   └── types.go        # Structs: HardwareInfo, CPUInfo, MemoryInfo, etc.
-│   ├── server/
-│   │   └── server.go       # HTTP server: /api/hardware, /api/health, static web
-│   ├── export/
-│   │   └── export.go       # ExportToJSON, AutoExport (USB detection)
-│   └── utils/
-│       └── utils.go        # GetLocalIP()
-├── web/
-│   └── index.html          # Dashboard web (dark theme, responsive, vanilla JS)
-├── build/
-│   └── alpine/
-│       ├── build.sh        # Genera alpine-hwscan-3.23.3-x86_64.iso
-│       ├── verify.sh       # Verifica la ISO generada
-│       ├── README.md       # Instrucciones del builder
-│       └── base/           # ISO base de Alpine (no incluida en repo)
-├── go.mod
-├── Makefile
-└── LICENSE
-```
-
-## Integración Alpine Linux
-
-El script `build/alpine/build.sh` genera una ISO booteable de Alpine Linux con HWSCAN integrado:
+### 1. Compilar
 
 ```bash
-# 1. Compilar el binario estático
 make build-amd64
-# → genera dist/hwscan
-
-# 2. Colocar la ISO base de Alpine en build/alpine/base/
-#    alpine-standard-3.23.3-x86_64.iso
-
-# 3. Generar la ISO personalizada (requiere Linux + xorriso)
-cd build/alpine
-bash build.sh
-# → genera build/alpine/output/alpine-hwscan-3.23.3-x86_64.iso
 ```
 
-El proceso embebe el binario en `/usr/local/bin/hwscan`, los archivos web en `/usr/share/hwscan/web`, configura DHCP automático y lanza HWSCAN al iniciar sesión.
+### 2. Colocar la ISO base de Alpine
 
-## Requisitos para compilar
+Descarga una ISO **standard** desde [alpinelinux.org](https://alpinelinux.org/downloads/) y colócala en:
 
-- Go 1.21 o superior
-- No requiere ninguna dependencia externa (solo stdlib)
+```text
+build/alpine/base/
+```
 
-## Requisitos para construir la ISO
+Ejemplo: `alpine-standard-3.24.1-x86_64.iso`
 
-- Linux (cualquier distro)
-- `xorriso`, `cpio`, `gzip`, `tar`
-- ISO base: `alpine-standard-3.23.3-x86_64.iso` (descargar desde [alpinelinux.org](https://alpinelinux.org/downloads/))
+> Esta carpeta y las ISOs **no se versionan** (ver `.gitignore`).
+
+### 3. Generar la ISO de HWSCAN
+
+```bash
+cd build/alpine
+bash build.sh          # detecta ISOs en base/ y pregunta si hay varias
+bash verify.sh         # comprueba boot, apkovl y parches UEFI/BIOS
+```
+
+Salida:
+
+```text
+build/alpine/output/hwscan-live-x86_64.iso
+```
+
+Formas no interactivas:
+
+```bash
+bash build.sh alpine-standard-3.24.1-x86_64.iso
+ALPINE_ISO=base/mi-alpine.iso bash build.sh
+```
+
+### 4. Grabar en USB (recomendado: `dd`)
+
+```bash
+lsblk
+sudo umount /dev/sdX* 2>/dev/null || true
+sudo dd if=build/alpine/output/hwscan-live-x86_64.iso of=/dev/sdX bs=4M status=progress conv=fsync
+sync
+```
+
+Sustituye `/dev/sdX` por tu USB real (nunca `sda` del disco del sistema).
+
+En la PC objetivo (UEFI): desactiva **Secure Boot** y elige **UEFI: USB** en el menú de arranque.
+
+Herramientas alternativas: Balena Etcher, Rufus (modo DD), Ventoy, GNOME Disks.
+
+## Estructura del proyecto
+
+```text
+hwscan/
+├── cmd/hwscan/           # Punto de entrada
+├── internal/
+│   ├── hardware/         # Detección y tipos
+│   ├── server/           # API HTTP + web estática
+│   ├── export/           # JSON y detección USB
+│   └── version/          # Versión (fuente de verdad)
+├── web/index.html        # Dashboard (tema claro/oscuro)
+├── build/alpine/
+│   ├── build.sh          # Genera hwscan-live-x86_64.iso
+│   ├── verify.sh         # Verifica la ISO
+│   ├── base/             # ISO Alpine de entrada (local, ignorada por git)
+│   ├── work/             # Temporal de build (ignorado)
+│   └── output/           # ISO generada (ignorada)
+├── Makefile
+└── go.mod
+```
+
+## Qué no subir a Git
+
+El `.gitignore` excluye automáticamente:
+
+| Ruta / patrón | Contenido |
+|---------------|-----------|
+| `build/alpine/base/` | ISOs Alpine descargadas |
+| `build/alpine/output/` | `hwscan-live-x86_64.iso` generada |
+| `build/alpine/work/` | Archivos temporales del builder |
+| `*.iso` | Cualquier imagen ISO en el repo |
+| `bin/`, `dist/` | Binarios compilados |
+| `hwscan-*.json` | Reportes exportados localmente |
+
+Los scripts `build.sh` y `verify.sh` **sí** van en el repositorio.
+
+## Requisitos
+
+**Compilar HWSCAN:** Go 1.21+
+
+**Construir la ISO:** Linux, `xorriso`, `cpio`, `gzip`, `tar`
 
 ## Autor
 
